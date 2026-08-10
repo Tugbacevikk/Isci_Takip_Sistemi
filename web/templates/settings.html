@@ -1,0 +1,694 @@
+{% extends 'base.html' %}
+
+{% block title %}Sistem Ayarları{% endblock %}
+{% block page_title %}Ayarlar{% endblock %}
+{% block page_title_sub %}Sistem Yapılandırması{% endblock %}
+
+{% block content %}
+
+<div class="two-col-layout">
+
+    <!-- ════════════════════════════════════════════
+         LEFT COLUMN
+    ════════════════════════════════════════════ -->
+    <div class="col-left">
+
+        <!-- Card 1: General Settings -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-header-left">
+                    <i class="fa-solid fa-sliders card-header-icon"></i>
+                    <h2 class="card-title">Genel Ayarlar</h2>
+                </div>
+            </div>
+            <div class="card-body">
+
+                <!-- Station Name -->
+                <div class="form-group">
+                    <label class="form-label" for="s-station-name">
+                        <i class="fa-solid fa-industry"></i> Bu Bilgisayarın İstasyonu
+                    </label>
+                    <select class="form-select" id="s-station-name" name="station_name">
+                        <option value="">— İstasyon Seçin —</option>
+                        {% set cur_station = config.get('station_name', '') if config else '' %}
+                        {% for n in range(1, 11) %}
+                        <option value="Istasyon-{{ n }}" {% if cur_station == 'Istasyon-' ~ n %}selected{% endif %}>İstasyon-{{ n }}</option>
+                        {% endfor %}
+                    </select>
+                    <small style="color:var(--text-muted); font-size:11px; margin-top:4px; display:block;">Bu seçim kaydedildikten sonra tüm raporlarda ve kayıtlarda bu bilgisayar seçilen istasyon adıyla görünür.</small>
+                </div>
+
+
+                <!-- Reset link -->
+                <div class="form-group-row">
+                    <a href="#" class="link-danger" id="btn-reset-defaults"
+                       onclick="resetDefaults(event)">
+                        <i class="fa-solid fa-rotate-left"></i> Varsayılana Dön
+                    </a>
+                    <button class="btn btn--primary" id="btn-save-general">
+                        <i class="fa-solid fa-floppy-disk"></i> Kaydet
+                    </button>
+                </div>
+
+            </div>
+        </div>
+        <!-- END General Settings Card -->
+
+
+
+
+
+
+
+    </div>
+    <!-- END LEFT COLUMN -->
+
+
+    <!-- ════════════════════════════════════════════
+         RIGHT COLUMN
+    ════════════════════════════════════════════ -->
+    <div class="col-right">
+
+
+
+
+        <!-- Card 5: System Info -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-header-left">
+                    <i class="fa-solid fa-circle-info card-header-icon"></i>
+                    <h2 class="card-title">Sistem Bilgisi</h2>
+                </div>
+                <button class="btn btn--outline btn--sm" id="btn-refresh-sysinfo">
+                    <i class="fa-solid fa-rotate-right"></i> Yenile
+                </button>
+            </div>
+            <div class="card-body">
+
+                <div class="sysinfo-list" id="sysinfo-list">
+
+                    <div class="sysinfo-item">
+                        <span class="sysinfo-key">
+                            <i class="fa-brands fa-python"></i> Python Sürümü
+                        </span>
+                        <span class="sysinfo-val" id="si-python">
+                            {{ system_info.python_version if system_info else '—' }}
+                        </span>
+                    </div>
+
+                    <div class="sysinfo-item">
+                        <span class="sysinfo-key">
+                            <i class="fa-solid fa-computer"></i> Platform
+                        </span>
+                        <span class="sysinfo-val" id="si-platform">
+                            {{ system_info.platform if system_info else '—' }}
+                        </span>
+                    </div>
+
+                    <div class="sysinfo-item">
+                        <span class="sysinfo-key">
+                            <i class="fa-solid fa-hard-drive"></i> SQLite DB Boyutu
+                        </span>
+                        <span class="sysinfo-val" id="si-db-size">
+                            {{ system_info.db_size if system_info else '—' }}
+                        </span>
+                    </div>
+
+                    <div class="sysinfo-item">
+                        <span class="sysinfo-key">
+                            <i class="fa-solid fa-microchip"></i> Yapay Zeka Motoru
+                        </span>
+                        <span class="sysinfo-val" id="si-face-lib">
+                            <span class="badge badge--success">
+                                YOLOv8 (ARM CM5 Hızlandırmalı)
+                            </span>
+                        </span>
+                    </div>
+
+                    <div class="sysinfo-item">
+                        <span class="sysinfo-key">
+                            <i class="fa-solid fa-camera"></i> Kamera Durumu
+                        </span>
+                        <span class="sysinfo-val" id="si-camera-status">
+                            <span class="badge badge--outline">Yükleniyor...</span>
+                        </span>
+                    </div>
+
+                    <div class="sysinfo-item">
+                        <span class="sysinfo-key">
+                            <i class="fa-solid fa-clock-rotate-left"></i> Son Güncelleme
+                        </span>
+                        <span class="sysinfo-val" id="si-last-update">
+                            {{ system_info.last_update if system_info else '—' }}
+                        </span>
+                    </div>
+
+                    <div class="sysinfo-item">
+                        <span class="sysinfo-key">
+                            <i class="fa-solid fa-microchip"></i> CPU Kullanımı
+                        </span>
+                        <div class="sysinfo-val">
+                            <div class="mini-progress-wrap">
+                                <div class="mini-progress-bar" id="si-cpu-bar" style="width: 0%"></div>
+                            </div>
+                            <span id="si-cpu-text">—</span>
+                        </div>
+                    </div>
+
+                    <div class="sysinfo-item">
+                        <span class="sysinfo-key">
+                            <i class="fa-solid fa-memory"></i> RAM Kullanımı
+                        </span>
+                        <div class="sysinfo-val">
+                            <div class="mini-progress-wrap">
+                                <div class="mini-progress-bar mini-progress-bar--blue" id="si-ram-bar" style="width: 0%"></div>
+                            </div>
+                            <span id="si-ram-text">—</span>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+        <!-- END System Info Card -->
+
+        <!-- Card 6: User Management (Admin Only) -->
+        {% if session.get('role') in ['admin', 'super_admin'] or (current_user and current_user.rol in ['admin', 'super_admin']) %}
+        <div class="card" style="margin-top:24px;">
+            <div class="card-header">
+                <div class="card-header-left">
+                    <i class="fa-solid fa-users-gear card-header-icon" style="color:var(--accent);"></i>
+                    <h2 class="card-title">Kullanıcı & Patron Yetkilendirme</h2>
+                </div>
+            </div>
+            <div class="card-body">
+                <p class="section-desc">
+                    <i class="fa-solid fa-shield-halved"></i>
+                    Sisteme erişebilecek Patron hesaplarını ve yöneticileri bu alandan yetkilendirebilirsiniz.
+                </p>
+
+                <!-- New User Form -->
+                <form id="form-add-user" onsubmit="addUserSubmit(event)" style="background:var(--bg-secondary); padding:16px; border-radius:var(--radius-md); border:1px solid var(--border-color); margin-bottom:20px;">
+                    <div style="font-weight:700; font-size:14px; margin-bottom:12px; color:var(--text-primary);">
+                        <i class="fa-solid fa-user-plus"></i> Yeni Kullanıcı / Patron Ekle
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                        <div class="form-group" style="margin:0;">
+                            <label class="form-label">Kullanıcı Adı *</label>
+                            <input type="text" class="form-input" id="u-username" placeholder="Örn: kullaniciadi" required>
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label class="form-label">Ad Soyad *</label>
+                            <input type="text" class="form-input" id="u-fullname" placeholder="Örn: Ahmet Yılmaz" required>
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label class="form-label">Şifre *</label>
+                            <input type="password" class="form-input" id="u-password" placeholder="••••••••" required>
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label class="form-label">Rol / Yetki Türü *</label>
+                            <select class="form-select" id="u-role">
+                                <option value="patron">Patron </option>
+                                <option value="admin">Süper Admin </option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin:0; grid-column: 1 / -1;">
+                            <label class="form-label"><i class="fa-solid fa-industry" style="color:var(--accent);"></i> Yetkili İstasyonlar</label>
+                            <div id="u-stations-checkboxes" style="display:flex; flex-wrap:wrap; gap:8px; background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:12px;">
+                                {% for n in range(1, 11) %}
+                                <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer; padding:4px 10px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-secondary); white-space:nowrap;">
+                                    <input type="checkbox" name="u-station-cb" value="Istasyon-{{ n }}" style="accent-color:var(--accent);"> İstasyon-{{ n }}
+                                </label>
+                                {% endfor %}
+                            </div>
+                            <input type="hidden" id="u-stations">
+                            <small style="font-size:11px; color:var(--text-muted); margin-top:4px; display:block;">Patronun görebileceği ve yönetebileceği istasyonları seçin. Süper Admin için seçim gerekmez.</small>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width:100%; margin-top:14px;">
+                        <i class="fa-solid fa-user-check"></i> Hesabı Kaydet ve Yetkilendir
+                    </button>
+                </form>
+
+                <!-- Users List Table -->
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Kullanıcı Adı</th>
+                                <th>Ad Soyad</th>
+                                <th>Firma / Fabrika</th>
+                                <th>Atanan İstasyonlar</th>
+                                <th>Rol / Yetki</th>
+                                <th>İşlem</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-table-tbody">
+                            {% if users %}
+                                {% for u in users %}
+                                <tr>
+                                    <td style="font-weight:700;">{{ u.kullanici_adi }}</td>
+                                    <td>{{ u.ad_soyad or '—' }}</td>
+                                    <td>{{ u.firma_adi or '—' }}</td>
+                                    <td><span class="badge badge--outline" style="font-size:11px;"><i class="fa-solid fa-industry"></i> {{ u.istasyonlar or 'Tüm Fabrika' }}</span></td>
+                                    <td>
+                                        <span class="status-badge {{ 'aktif' if u.rol in ['admin', 'super_admin'] else ('inaktif' if u.rol == 'patron' else 'tolerans') }}">
+                                            {{ 'Süper Admin' if u.rol in ['admin', 'super_admin'] else ('Patron' if u.rol == 'patron' else 'Operatör') }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if u.kullanici_adi != 'admin' %}
+                                        <button class="btn btn-danger" style="padding:4px 8px; font-size:12px;"
+                                                onclick="deleteUser(this)"
+                                                data-id="{{ u.id }}"
+                                                data-name="{{ u.kullanici_adi }}">
+                                            <i class="fa-solid fa-trash"></i> Sil
+                                        </button>
+                                        {% else %}
+                                        <span style="font-size:11px; color:var(--text-muted);">Ana Sistem Hesabı</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                            <tr>
+                                <td colspan="5" style="text-align:center; padding:15px; color:var(--text-secondary);">
+                                    Kullanıcı bulunamadı.
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+    <!-- END RIGHT COLUMN -->
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     MODAL: Kullanıcı / Patron Düzenle
+════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-edit-user" style="display:none;" onclick="closeEditUserModal(event)">
+    <div class="modal" style="max-width:540px; width:95%;" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fa-solid fa-user-pen"></i> Kullanıcı Düzenle</h2>
+            <button class="modal-close" onclick="closeEditUserModal()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="edit-user-id">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:16px;">
+                <div class="form-group" style="margin:0;">
+                    <label class="form-label">Kullanıcı Adı</label>
+                    <input type="text" class="form-input" id="edit-username" disabled style="opacity:0.6;">
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label class="form-label">Ad Soyad *</label>
+                    <input type="text" class="form-input" id="edit-fullname" placeholder="Örn: Kadir Kaya">
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label class="form-label">Rol / Yetki *</label>
+                    <select class="form-select" id="edit-role">
+                        <option value="patron">Patron</option>
+                        <option value="admin">Süper Admin</option>
+                        <option value="operator">Operatör</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label class="form-label">Yeni Şifre <small style="color:var(--text-muted);">(boş = değiştirme)</small></label>
+                    <input type="password" class="form-input" id="edit-password" placeholder="••••••••">
+                </div>
+            </div>
+
+            <!-- İstasyon Checkbox Listesi -->
+            <div class="form-group">
+                <label class="form-label"><i class="fa-solid fa-industry" style="color:var(--accent);"></i> Yetkili İstasyonlar</label>
+                <div id="edit-stations-checkboxes" style="display:flex; flex-wrap:wrap; gap:8px; background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:12px;">
+                    {% for n in range(1, 11) %}
+                    <label id="edit-st-lbl-{{ n }}" style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer; padding:5px 12px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-card); white-space:nowrap; transition:all .15s;">
+                        <input type="checkbox" name="edit-station-cb" value="Istasyon-{{ n }}" style="accent-color:var(--accent);"> İstasyon-{{ n }}
+                    </label>
+                    {% endfor %}
+                </div>
+                <small style="font-size:11px; color:var(--text-muted); margin-top:6px; display:block;">Süper Admin için istasyon seçimi gerekmez — otomatik tüm fabrikayı görür.</small>
+            </div>
+        </div>
+        <div class="modal-footer" style="display:flex; gap:10px; justify-content:flex-end;">
+            <button class="btn btn-secondary" onclick="closeEditUserModal()">İptal</button>
+            <button class="btn btn-success" onclick="saveEditUser()" id="btn-save-edit-user">
+                <i class="fa-solid fa-floppy-disk"></i> Değişiklikleri Kaydet
+            </button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+
+{% block extra_scripts %}
+<script>
+// ═══════════════════════════════════════════════
+// Settings JS
+// ═══════════════════════════════════════════════
+
+// ── General Settings Save ─────────────────────────────────────
+document.getElementById('btn-save-general').addEventListener('click', function() {
+    const payload = {
+        station_name: document.getElementById('s-station-name').value
+    };
+    saveSettings(payload, this, 'Genel ayarlar kaydedildi');
+});
+
+
+
+
+
+// ── Generic Save Helper ───────────────────────────────────────
+function saveSettings(payload, btn, successMsg) {
+    const origHTML = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Kaydediliyor...';
+
+    fetch('/api/settings/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success || data.status === 'ok') {
+            showToast(successMsg, 'success');
+        } else {
+            showToast(data.message || 'Kayıt hatası', 'error');
+        }
+    })
+    .catch(() => showToast('Sunucu bağlantı hatası', 'error'))
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = origHTML;
+    });
+}
+
+// ── System Info Fetcher ───────────────────────────────────────
+function fetchSystemInfo() {
+    fetch('/api/system/info')
+        .then(r => r.json())
+        .then(data => {
+            if (!data) return;
+            if (document.getElementById('si-python')) document.getElementById('si-python').textContent = data.python_version || '—';
+            if (document.getElementById('si-platform')) document.getElementById('si-platform').textContent = data.platform || '—';
+            if (document.getElementById('si-db-size')) document.getElementById('si-db-size').textContent = data.db_size || '—';
+
+            const faceElem = document.getElementById('si-face-lib');
+            if (faceElem) {
+                faceElem.innerHTML = `<span class="badge badge--success">${data.face_lib || 'YuNet + SFace'}</span>`;
+            }
+
+            const camElem = document.getElementById('si-camera-status');
+            if (camElem) {
+                const isActive = data.camera_status === 'Aktif';
+                camElem.innerHTML = `<span class="badge ${isActive ? 'badge--success' : 'badge--outline'}">${data.camera_status || 'Kapalı'}</span>`;
+            }
+
+            if (document.getElementById('si-last-update')) document.getElementById('si-last-update').textContent = data.last_update || '—';
+
+            // CPU
+            const cpuVal = data.cpu_usage !== undefined ? data.cpu_usage : 0;
+            const cpuBar = document.getElementById('si-cpu-bar');
+            if (cpuBar) cpuBar.style.width = cpuVal + '%';
+            const cpuText = document.getElementById('si-cpu-text');
+            if (cpuText) cpuText.textContent = cpuVal + '%';
+
+            // RAM
+            const ramVal = data.ram_usage !== undefined ? data.ram_usage : 0;
+            const ramBar = document.getElementById('si-ram-bar');
+            if (ramBar) ramBar.style.width = ramVal + '%';
+            const ramText = document.getElementById('si-ram-text');
+            if (ramText) ramText.textContent = ramVal + '%';
+        })
+        .catch(err => console.error('System info fetch error:', err));
+}
+
+const btnRefreshSys = document.getElementById('btn-refresh-sysinfo');
+if (btnRefreshSys) {
+    btnRefreshSys.addEventListener('click', function() {
+        this.disabled = true;
+        fetchSystemInfo();
+        setTimeout(() => { this.disabled = false; }, 1000);
+    });
+}
+
+fetchSystemInfo();
+setInterval(fetchSystemInfo, 5000);
+
+// ── Kullanıcı Yönetimi (Admin Only) ───────────────────────────
+function loadUsers() {
+    const tbody = document.getElementById('users-table-tbody');
+    if (!tbody) return;
+
+    fetch('/api/users/list')
+        .then(r => {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.json();
+        })
+        .then(data => {
+            const users = Array.isArray(data) ? data : (data.users || data.data || []);
+            if (!users.length) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:15px; color:var(--text-secondary);">Kullanıcı bulunamadı.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = users.map(u => {
+                const isSuper = u.rol === 'admin' || u.rol === 'super_admin';
+                const isPatron = u.rol === 'patron';
+                const roleBadgeClass = isSuper ? 'aktif' : (isPatron ? 'inaktif' : 'tolerans');
+                const roleLabel = isSuper ? 'Süper Admin' : (isPatron ? 'Patron' : 'Operatör');
+                const stStr = u.istasyonlar || (isSuper ? 'Tüm Fabrika' : 'Atanmadı');
+                const editBtn = u.kullanici_adi !== 'admin'
+                    ? `<div style="display:flex;gap:6px;">
+                           <button class="btn btn--outline btn--sm" style="padding:4px 8px;font-size:12px;"
+                               data-uid="${u.id}"
+                               data-uname="${(u.kullanici_adi||'').replace(/"/g,'&quot;')}"
+                               data-ufull="${(u.ad_soyad||'').replace(/"/g,'&quot;')}"
+                               data-urol="${u.rol}"
+                               data-ust="${(u.istasyonlar||'').replace(/"/g,'&quot;')}"
+                               onclick="editUserFromBtn(this)">
+                               <i class="fa-solid fa-pen"></i> Düzenle
+                           </button>
+                           <button class="btn btn-danger" style="padding:4px 8px;font-size:12px;"
+                               onclick="deleteUser(${u.id},'${u.kullanici_adi}')">
+                               <i class="fa-solid fa-trash"></i>
+                           </button>
+                       </div>`
+                    : '<span style="font-size:11px;color:var(--text-muted);">Ana Sistem Hesabı</span>';
+
+                return `
+                    <tr>
+                        <td style="font-weight:700;">${u.kullanici_adi}</td>
+                        <td>${u.ad_soyad || '—'}</td>
+                        <td>${u.firma_adi || 'Fabrika'}</td>
+                        <td><span class="badge badge--outline" style="font-size:11px;"><i class="fa-solid fa-industry"></i> ${stStr}</span></td>
+                        <td><span class="status-badge ${roleBadgeClass}">${roleLabel}</span></td>
+                        <td>${editBtn}</td>
+                    </tr>
+                `;
+            }).join('');
+        })
+        .catch(err => {
+            console.error('Kullanıcı yükleme hatası:', err);
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:15px; color:var(--red);">Kullanıcı listesi yüklenemedi. (Yönetici girişi gereklidir)</td></tr>';
+        });
+}
+
+function addUserSubmit(e) {
+    e.preventDefault();
+    const username = document.getElementById('u-username').value.trim();
+    const fullname = document.getElementById('u-fullname').value.trim();
+    const password = document.getElementById('u-password').value;
+    const role     = document.getElementById('u-role').value;
+
+    // Collect checked station checkboxes → comma-separated string
+    const checked = Array.from(document.querySelectorAll('input[name="u-station-cb"]:checked')).map(cb => cb.value);
+    const stations = checked.join(', ');
+    document.getElementById('u-stations').value = stations;
+
+    if (!username || !fullname || !password) {
+        showToast('Kullanıcı adı, ad soyad ve şifre zorunludur.', 'error');
+        return;
+    }
+
+    fetch('/api/users/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            kullanici_adi: username,
+            username: username,
+            ad_soyad: fullname,
+            fullname: fullname,
+            firma_adi: 'Fabrika',
+            company: 'Fabrika',
+            sifre: password,
+            password: password,
+            rol: role,
+            role: role,
+            istasyonlar: stations,
+            stations: stations
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message || 'Kullanıcı başarıyla eklendi', 'success');
+            document.getElementById('form-add-user').reset();
+            // Uncheck all checkboxes after reset
+            document.querySelectorAll('input[name="u-station-cb"]').forEach(cb => cb.checked = false);
+            loadUsers();
+        } else {
+            showToast(data.message || data.error || 'Hata oluştu', 'error');
+        }
+    })
+    .catch(err => showToast('Bağlantı hatası: ' + err.message, 'error'));
+}
+
+function deleteUser(btn, username) {
+    let id = null;
+    if (btn && typeof btn === 'object' && btn.dataset) {
+        id = btn.dataset.id;
+        username = btn.dataset.name;
+    } else {
+        id = btn;
+    }
+    if (!confirm(`${username} kullanıcısını silmek istediğinizden emin misiniz?`)) return;
+
+    fetch(`/api/users/${id}/delete`, { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.message || 'Kullanıcı silindi', 'success');
+                loadUsers();
+            } else {
+                showToast(data.message || data.error || 'Silme hatası', 'error');
+            }
+        });
+}
+
+// ── Kullanıcı Düzenle ──────────────────────────────────────────
+// Reads data-* attributes from button to avoid string escaping in template literals
+function editUserFromBtn(btn) {
+    editUser(
+        btn.dataset.uid,
+        btn.dataset.uname,
+        btn.dataset.ufull,
+        btn.dataset.urol,
+        btn.dataset.ust
+    );
+}
+
+function editUser(id, username, fullname, rol, istasyonlar) {
+    document.getElementById('edit-user-id').value = id;
+    document.getElementById('edit-username').value = username;
+    document.getElementById('edit-fullname').value = fullname;
+    document.getElementById('edit-role').value = rol;
+    document.getElementById('edit-password').value = '';
+
+    // Mevcut istasyonları parse edip checkbox'ları işaretle
+    const assigned = istasyonlar ? istasyonlar.split(',').map(s => s.trim()).filter(Boolean) : [];
+    document.querySelectorAll('input[name="edit-station-cb"]').forEach(cb => {
+        cb.checked = assigned.includes(cb.value);
+        // Seçili olanları görsel olarak vurgula
+        const lbl = cb.closest('label');
+        if (cb.checked) {
+            lbl.style.background = 'var(--accent-light, #e0e7ff)';
+            lbl.style.borderColor = 'var(--accent)';
+            lbl.style.color = 'var(--accent)';
+            lbl.style.fontWeight = '600';
+        } else {
+            lbl.style.background = 'var(--bg-card)';
+            lbl.style.borderColor = 'var(--border-color)';
+            lbl.style.color = '';
+            lbl.style.fontWeight = '';
+        }
+    });
+
+    // Checkbox değişince görsel güncelle
+    document.querySelectorAll('input[name="edit-station-cb"]').forEach(cb => {
+        cb.onchange = function() {
+            const lbl = this.closest('label');
+            if (this.checked) {
+                lbl.style.background = 'var(--accent-light, #e0e7ff)';
+                lbl.style.borderColor = 'var(--accent)';
+                lbl.style.color = 'var(--accent)';
+                lbl.style.fontWeight = '600';
+            } else {
+                lbl.style.background = 'var(--bg-card)';
+                lbl.style.borderColor = 'var(--border-color)';
+                lbl.style.color = '';
+                lbl.style.fontWeight = '';
+            }
+        };
+    });
+
+    document.getElementById('modal-edit-user').style.display = 'flex';
+}
+
+function closeEditUserModal(event) {
+    if (!event || event.target.id === 'modal-edit-user' || event.target.closest('.modal-close') || event.target.closest('.btn-secondary')) {
+        document.getElementById('modal-edit-user').style.display = 'none';
+    }
+}
+
+function saveEditUser() {
+    const id       = document.getElementById('edit-user-id').value;
+    const fullname = document.getElementById('edit-fullname').value.trim();
+    const role     = document.getElementById('edit-role').value;
+    const password = document.getElementById('edit-password').value;
+
+    const checkedStations = Array.from(document.querySelectorAll('input[name="edit-station-cb"]:checked'))
+        .map(cb => cb.value);
+    const stations = checkedStations.join(', ');
+
+    if (!fullname) {
+        showToast('Ad Soyad boş bırakılamaz.', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('btn-save-edit-user');
+    const origHTML = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Kaydediliyor...';
+
+    fetch(`/api/users/${id}/update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            ad_soyad: fullname,
+            rol: role,
+            sifre: password,
+            istasyonlar: stations,
+            stations: stations
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message || 'Kullanıcı güncellendi', 'success');
+            document.getElementById('modal-edit-user').style.display = 'none';
+            loadUsers();
+        } else {
+            showToast(data.message || 'Güncelleme hatası', 'error');
+        }
+    })
+    .catch(err => showToast('Sunucu hatası: ' + err.message, 'error'))
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = origHTML;
+    });
+}
+
+loadUsers();
+</script>
+{% endblock %}

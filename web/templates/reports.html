@@ -1,0 +1,464 @@
+{% extends 'base.html' %}
+
+{% block title %}Raporlar & Çalışan Analizi{% endblock %}
+{% block page_title %}Raporlar{% endblock %}
+{% block page_title_sub %}Çalışan Çalışma Saatleri & İstatistikler{% endblock %}
+
+{% block content %}
+
+<!-- ── FILTER BAR ─────────────────────────────────────────────── -->
+<div class="card filter-bar-card">
+    <div class="card-body">
+        <div class="filter-bar" style="display:flex; flex-wrap:wrap; gap:16px; align-items:flex-end;">
+            <div class="filter-group">
+                <label class="filter-label">
+                    <i class="fa-regular fa-calendar-days"></i> Başlangıç Tarihi
+                </label>
+                <input type="date" class="form-input form-input--sm" id="filter-start">
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">
+                    <i class="fa-regular fa-calendar-days"></i> Bitiş Tarihi
+                </label>
+                <input type="date" class="form-input form-input--sm" id="filter-end">
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">
+                    <i class="fa-solid fa-user-check"></i> Çalışan Filtresi
+                </label>
+                <input type="text" class="form-input form-input--sm" id="filter-worker" placeholder="Çalışan adı veya ID...">
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">
+                    <i class="fa-solid fa-industry"></i> İstasyon
+                </label>
+                <input type="text" class="form-input form-input--sm" id="filter-station" placeholder="İstasyon veya video adı...">
+            </div>
+            <div class="filter-group filter-group--actions" style="display:flex; gap:8px;">
+                <button class="btn btn-primary" id="btn-filter">
+                    <i class="fa-solid fa-filter"></i> Filtrele
+                </button>
+                <button class="btn btn-secondary" id="btn-csv">
+                    <i class="fa-solid fa-file-csv"></i> CSV İndir
+                </button>
+                <button class="btn btn-secondary" id="btn-reset-filter" title="Filtreyi Sıfırla">
+                    <i class="fa-solid fa-rotate-left"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- ── ROW 3: Station & Worker Summary Table ───────────────────────────── -->
+<div class="card" style="margin-bottom:24px;">
+    <div class="card-header">
+        <div class="card-title">
+            <i class="fa-solid fa-industry" style="color:var(--accent);"></i>
+            İstasyon ve Çalışan Mesai Özeti
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="min-width:110px;"><i class="fa-regular fa-calendar"></i> Tarih</th>
+                        <th><i class="fa-solid fa-industry" style="color:var(--accent);"></i> İstasyon Adı</th>
+                        <th><i class="fa-solid fa-user"></i> Çalışan Adı</th>
+                        <th><i class="fa-regular fa-clock"></i> Vardiya Başı (İlk Görülme)</th>
+                        <th><i class="fa-regular fa-clock"></i> Vardiya Bitişi (Son Görülme)</th>
+                        <th><i class="fa-solid fa-briefcase"></i> Aktif Çalışma Süresi</th>
+                        <th><i class="fa-solid fa-fire-flame-curved" style="color:#06B6D4;"></i> Kaynak Süresi</th>
+                        <th><i class="fa-solid fa-user-slash"></i> Hareketsiz Süre</th>
+                        <th><i class="fa-solid fa-mobile-screen-button"></i> Telefon Süresi</th>
+                        <th><i class="fa-solid fa-gauge-high"></i> Verimlilik Oranı</th>
+                        <th><i class="fa-solid fa-chart-pie"></i> Detaylı Grafikler</th>
+                    </tr>
+                </thead>
+                <tbody id="worker-stats-tbody">
+                    <tr>
+                        <td colspan="11" style="text-align:center; padding:20px; color:var(--text-secondary);">
+                            Veriler yükleniyor...
+                        </td>
+                    </tr>
+                </tbody>
+
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ── WORKER DETAIL ANALYSIS MODAL ──────────────────────────── -->
+<div class="modal-overlay" id="worker-detail-modal" style="display:none; align-items:center; justify-content:center; z-index:9999; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(4px);">
+    <div class="modal-card" style="width:90%; max-width:900px; max-height:90vh; overflow-y:auto; background:var(--bg-card); border-radius:16px; border:1px solid var(--border-color); padding:24px; box-shadow:0 20px 40px rgba(0,0,0,0.5);">
+        
+        <!-- Modal Header -->
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:16px; margin-bottom:20px;">
+                <div>
+                    <h2 style="font-size:20px; font-weight:700; color:var(--text-primary); margin:0;" id="wd-worker-name">Çalışan Analizi</h2>
+                    <div style="display:flex; gap:10px; margin-top:4px; font-size:12px; color:var(--text-secondary);">
+                        <span id="wd-sicil"><i class="fa-solid fa-id-card"></i> Sicil: —</span>
+                        <span>•</span>
+                        <span id="wd-dept"><i class="fa-solid fa-building"></i> Departman: —</span>
+                    </div>
+                </div>
+            <button class="btn btn-secondary btn-icon" onclick="closeWorkerDetailModal()" title="Kapat" style="font-size:18px; padding:8px 14px;">
+                <i class="fa-solid fa-xmark"></i> Kapat
+            </button>
+        </div>
+
+        <!-- Modal 4 KPI Cards -->
+        <div class="kpi-grid" style="margin-bottom:20px;">
+            <div class="kpi-card" style="padding:14px;">
+                <div class="kpi-icon green" style="width:40px; height:40px; font-size:16px;">
+                    <i class="fa-solid fa-briefcase"></i>
+                </div>
+                <div class="kpi-body">
+                    <span class="kpi-lbl" style="font-size:11px;">Aktif Çalışma Süresi</span>
+                    <span class="kpi-val" id="wd-kpi-active" style="color:var(--green); font-size:16px;">—</span>
+                    <span class="kpi-lbl" id="wd-kpi-active-pct" style="font-size:11px;">%0 Oran</span>
+                </div>
+            </div>
+
+            <div class="kpi-card" style="padding:14px;">
+                <div class="kpi-icon red" style="width:40px; height:40px; font-size:16px;">
+                    <i class="fa-solid fa-user-slash"></i>
+                </div>
+                <div class="kpi-body">
+                    <span class="kpi-lbl" style="font-size:11px;">Hareketsiz Süre</span>
+                    <span class="kpi-val" id="wd-kpi-inactive" style="color:var(--red); font-size:16px;">—</span>
+                    <span class="kpi-lbl" id="wd-kpi-inactive-pct" style="font-size:11px;">%0 Oran</span>
+                </div>
+            </div>
+
+            <div class="kpi-card" style="padding:14px;">
+                <div class="kpi-icon orange" style="width:40px; height:40px; font-size:16px;">
+                    <i class="fa-solid fa-mobile-screen-button"></i>
+                </div>
+                <div class="kpi-body">
+                    <span class="kpi-lbl" style="font-size:11px;">Telefon Kullanım Süresi</span>
+                    <span class="kpi-val" id="wd-kpi-phone" style="color:var(--orange); font-size:16px;">—</span>
+                    <span class="kpi-lbl" id="wd-kpi-phone-cnt" style="font-size:11px;">0 Uyarı</span>
+                </div>
+            </div>
+
+            <div class="kpi-card" style="padding:14px;">
+                <div class="kpi-icon blue" style="width:40px; height:40px; font-size:16px;">
+                    <i class="fa-solid fa-gauge-high"></i>
+                </div>
+                <div class="kpi-body">
+                    <span class="kpi-lbl" style="font-size:11px;">Verimlilik Oranı</span>
+                    <span class="kpi-val" id="wd-kpi-score" style="color:var(--accent); font-size:16px;">%0</span>
+                    <span class="kpi-lbl" style="font-size:11px;">Toplam Vardiyada</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Chart Row (Donut Chart Only) -->
+        <div style="margin-bottom:20px;">
+            <div style="background:var(--bg-secondary); padding:16px; border-radius:12px; border:1px solid var(--border-color); max-width:550px; margin:0 auto;">
+                <div style="font-weight:700; font-size:13px; margin-bottom:12px; color:var(--text-primary); text-align:center;">
+                    <i class="fa-solid fa-chart-pie" style="color:var(--accent);"></i> Zaman Dağılım Grafiği (Aktif vs Hareketsiz vs Telefon)
+                </div>
+                <div style="height:220px; position:relative;">
+                    <canvas id="wdDonutChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Recent Records Table -->
+        <div style="background:var(--bg-secondary); padding:16px; border-radius:12px; border:1px solid var(--border-color);">
+            <div style="font-weight:700; font-size:13px; margin-bottom:12px; color:var(--text-primary);">
+                <i class="fa-solid fa-clock-rotate-left" style="color:var(--accent);"></i> Çalışana Ait Hareket Kayıtları (Durum Değişiklik Zaman Çizelgesi)
+            </div>
+            <div class="table-responsive" style="max-height:220px; overflow-y:auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Zaman Aralığı</th>
+                            <th>Geçen Süre</th>
+                            <th>İstasyon</th>
+                            <th>Tespit Edilen Durum</th>
+                        </tr>
+                    </thead>
+                    <tbody id="wd-records-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}
+
+
+{% block extra_scripts %}
+<script>
+let allRecords = [];
+let workerStatsData = [];
+let activityChartInst = null;
+let summaryChartInst = null;
+let workerChartInst = null;
+
+// Tarihleri varsayılan olarak bugün yap (Saatiz, sadece YYYY-MM-DD)
+function initDates() {
+    const elStart = document.getElementById('filter-start');
+    const elEnd   = document.getElementById('filter-end');
+    if (!elStart || !elEnd) return;
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const todayStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+    if (!elStart.value) elStart.value = todayStr;
+    if (!elEnd.value) elEnd.value = todayStr;
+}
+
+function buildParams() {
+    initDates();
+    const elStart   = document.getElementById('filter-start');
+    const elEnd     = document.getElementById('filter-end');
+    const elStation = document.getElementById('filter-station');
+    const elWorker  = document.getElementById('filter-worker');
+
+    const start   = elStart ? elStart.value : '';
+    const end     = elEnd ? elEnd.value : '';
+    const station = elStation ? elStation.value : '';
+    const worker  = elWorker ? elWorker.value : '';
+
+    const p = new URLSearchParams();
+    if (start)   p.set('start', start);
+    if (end)     p.set('end', end);
+    if (station) p.set('istasyon', station);
+    if (worker)  p.set('worker', worker);
+    return p.toString();
+}
+
+function fetchSummary(params) {
+    fetch('/api/reports/summary?' + params)
+        .then(r => r.json())
+        .then(data => {
+            const active   = data.aktif_kayit   || 0;
+            const inactive = data.inaktif_kayit || 0;
+            const alarms   = data.aktif_alarm   || 0;
+            const rate     = data.aktif_oran    || 0;
+
+            if (document.getElementById('sum-active')) document.getElementById('sum-active').textContent   = active.toLocaleString('tr-TR') + ' kayıt';
+            if (document.getElementById('sum-inactive')) document.getElementById('sum-inactive').textContent = inactive.toLocaleString('tr-TR') + ' kayıt';
+            if (document.getElementById('sum-rate')) document.getElementById('sum-rate').textContent     = '%' + rate;
+            if (document.getElementById('sum-alarms')) document.getElementById('sum-alarms').textContent   = alarms.toLocaleString('tr-TR');
+
+            if (summaryChartInst) {
+                summaryChartInst.data.datasets[0].data = [active, inactive, alarms];
+                summaryChartInst.update();
+            }
+        })
+        .catch(err => console.error(err));
+}
+
+function fetchWorkerStats(params) {
+    const tbody = document.getElementById('worker-stats-tbody');
+    if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:20px; color:var(--text-secondary);"><i class="fa-solid fa-spinner fa-spin"></i> Veriler yükleniyor...</td></tr>`;
+    }
+    fetch('/api/reports/worker_stats?' + params)
+        .then(r => r.json())
+        .then(data => {
+            workerStatsData = data.workers || data.data || [];
+            renderWorkerStatsTable(workerStatsData);
+            if (typeof updateWorkerChart === 'function') {
+                updateWorkerChart(workerStatsData);
+            }
+
+            let totalActiveSec = 0;
+            let totalInactiveSec = 0;
+            workerStatsData.forEach(w => {
+                totalActiveSec += (w.aktif_sure_sec || (w.aktif_kayit || 0) * 5);
+                totalInactiveSec += (w.inaktif_sure_sec || (w.inaktif_kayit || 0) * 5);
+            });
+
+            if (document.getElementById('sum-active-time')) document.getElementById('sum-active-time').textContent = formatSec(totalActiveSec);
+            if (document.getElementById('sum-inactive-time')) document.getElementById('sum-inactive-time').textContent = formatSec(totalInactiveSec);
+        })
+        .catch(err => {
+            console.error("Worker stats fetch error:", err);
+            if (tbody) {
+                tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:20px; color:var(--red);">Veri yükleme hatası oluştu.</td></tr>`;
+            }
+        });
+}
+
+function formatSec(seconds) {
+    if (!seconds || seconds <= 0) return '0 dk';
+    const secInt = Math.round(seconds);
+    const hrs = Math.floor(secInt / 3600);
+    const rem = secInt % 3600;
+    const mins = Math.floor(rem / 60);
+    const secs = rem % 60;
+
+    let parts = [];
+    if (hrs > 0) parts.push(`${hrs} sa`);
+    if (mins > 0) parts.push(`${mins} dk`);
+    if (secs > 0 && hrs === 0) parts.push(`${secs} sn`);
+
+    return parts.length ? parts.join(' ') : '0 dk';
+}
+
+let wdDonutChartInst = null;
+
+function renderWorkerStatsTable(workers) {
+    const tbody = document.getElementById('worker-stats-tbody');
+    if (!workers.length) {
+        tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:20px; color:var(--text-secondary);">Kayıtlı çalışma verisi bulunamadı.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = workers.map(w => {
+        const aktFmt = w.aktif_sure_fmt || formatSec((w.aktif_kayit || 0) * 5);
+        const kynkFmt = w.kaynak_sure_fmt || formatSec(w.kaynak_sure_sec || (w.kaynak_kayit || 0) * 5);
+        const inaktFmt = w.inaktif_sure_fmt || formatSec((w.inaktif_kayit || 0) * 5);
+        const telFmt = w.telefon_sure_fmt || formatSec(w.telefon_sure_sec || 0);
+        const rateVal = w.verimlilik_orani !== undefined ? w.verimlilik_orani : (w.aktif_oran !== undefined ? w.aktif_oran : 0);
+        const stName = w.istasyon_adi || 'İstasyon-1';
+        const isVideo = stName.startsWith('VIDEO:');
+        const cleanStName = isVideo ? stName.replace('VIDEO: ', '') : stName;
+        const stHtml = isVideo 
+            ? `<span style="display:inline-flex; align-items:center; gap:6px; color:#06B6D4; font-weight:700; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="Video Analiz Raporu: ${cleanStName}"><i class="fa-solid fa-file-video" style="flex-shrink:0;"></i><span style="overflow:hidden; text-overflow:ellipsis;">${cleanStName}</span></span>` 
+            : `<span style="display:inline-flex; align-items:center; gap:6px; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${stName}"><i class="fa-solid fa-industry" style="margin-right:2px; flex-shrink:0;"></i><span style="overflow:hidden; text-overflow:ellipsis;">${stName}</span></span>`;
+
+        const workerHtml = `<span style="display:inline-flex; align-items:center; gap:6px; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${w.worker_adi}"><i class="fa-solid fa-user-tie" style="color:var(--text-secondary); margin-right:2px; flex-shrink:0;"></i><span style="overflow:hidden; text-overflow:ellipsis;">${w.worker_adi}</span></span>`;
+
+        return `
+        <tr style="cursor:pointer;" 
+            data-wid="${w.worker_id || ''}" 
+            data-wname="${w.worker_adi || ''}" 
+            data-date="${w.tarih || ''}" 
+            data-station="${stName}" 
+            onclick="openWorkerDetailFromBtn(this)" 
+            title="${stName} - ${w.worker_adi} (${w.tarih_fmt || w.tarih}) detaylı grafik ve analizi için tıklayın">
+            <td style="font-weight:600; color:var(--text-primary);"><i class="fa-regular fa-calendar" style="color:var(--accent); margin-right:6px;"></i>${w.tarih_fmt || w.tarih}</td>
+            <td style="font-weight:700;">${stHtml}</td>
+            <td style="font-weight:600;">${workerHtml}</td>
+            <td style="font-size:13px; color:var(--text-secondary);">${w.ilk_gorulme || '—'}</td>
+            <td style="font-size:13px; color:var(--text-secondary);">${w.son_gorulme || '—'}</td>
+            <td style="font-weight:700; color:var(--green);">${aktFmt}</td>
+            <td style="font-weight:700; color:#06B6D4;"><i class="fa-solid fa-fire-flame-curved" style="margin-right:4px;"></i>${kynkFmt}</td>
+            <td style="color:var(--red);">${inaktFmt}</td>
+            <td style="color:var(--orange); font-weight:700;"><i class="fa-solid fa-mobile-screen-button" style="margin-right:4px;"></i>${telFmt}</td>
+            <td><span class="status-badge ${rateVal >= 70 ? 'aktif' : 'inaktif'}">%${rateVal}</span></td>
+            <td>
+                <button class="btn btn-outline" style="padding:4px 10px; font-size:12px; display:inline-flex; align-items:center; gap:6px;" onclick="event.stopPropagation(); openWorkerDetailFromBtn(this.closest('tr'))">
+                    <i class="fa-solid fa-chart-pie"></i> Detaylı Analiz & Grafik
+                </button>
+            </td>
+        </tr>
+    `;
+
+    }).join('');
+}
+
+function openWorkerDetailFromBtn(el) {
+    if (!el) return;
+    const wid = el.getAttribute('data-wid') || '';
+    const wname = el.getAttribute('data-wname') || '';
+    const date = el.getAttribute('data-date') || '';
+    const station = el.getAttribute('data-station') || '';
+    openWorkerDetailModal(wid, wname, date, station);
+}
+
+function openWorkerDetailModal(workerId, workerName, rowDate, stationName) {
+    let start = document.getElementById('filter-start').value;
+    let end   = document.getElementById('filter-end').value;
+
+    if (rowDate) {
+        start = rowDate;
+        end   = rowDate;
+    }
+
+    const params = new URLSearchParams();
+    if (workerId && workerId !== 'None') params.set('worker_id', workerId);
+    if (workerName) params.set('worker_name', workerName);
+    if (stationName) params.set('istasyon', stationName);
+    if (start) params.set('start', start);
+    if (end) params.set('end', end);
+
+    window.location.href = '/reports/worker_detail_page?' + params.toString();
+}
+
+
+function closeWorkerDetailModal() {
+    document.getElementById('worker-detail-modal').style.display = 'none';
+}
+
+function renderWdDonutChart(aktifMin, inaktifMin, telefonMin) {
+    const ctx = document.getElementById('wdDonutChart').getContext('2d');
+    if (wdDonutChartInst) wdDonutChartInst.destroy();
+
+    wdDonutChartInst = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Aktif Çalışma (Dk)', 'Hareketsiz Süre (Dk)', 'Telefon Kullanımı (Dk)'],
+            datasets: [{
+                data: [aktifMin, inaktifMin, telefonMin],
+                backgroundColor: ['#10B981', '#EF4444', '#F59E0B'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { boxWidth: 12 } }
+            },
+            cutout: '65%'
+        }
+    });
+}
+
+
+
+function fetchAll() {
+    const params = buildParams();
+    fetchSummary(params);
+    fetchWorkerStats(params);
+}
+
+document.getElementById('btn-filter').addEventListener('click', fetchAll);
+document.getElementById('btn-reset-filter').addEventListener('click', () => {
+    document.getElementById('filter-worker').value = '';
+    document.getElementById('filter-station').value = '';
+    initDates();
+    fetchAll();
+});
+
+// CSV İndir
+document.getElementById('btn-csv').addEventListener('click', () => {
+    if (!workerStatsData.length) {
+        showToast('İndirilecek veri bulunamadı', 'warning');
+        return;
+    }
+
+    let csv = "\uFEFF=== ÇALIŞAN GÜNLÜK MESAİ VE ÇALIŞMA SÜRELERİ ÖZETİ ===\n";
+    csv += "Tarih,Çalışan Adı,Vardiya Başı (İlk Görülme),Vardiya Bitişi (Son Görülme),Aktif Çalışma Süresi,Hareketsiz Süre,Verimlilik Oranı (%)\n";
+    workerStatsData.forEach(w => {
+        csv += `"${w.tarih_fmt || w.tarih}","${w.worker_adi}","${w.ilk_gorulme}","${w.son_gorulme}","${w.aktif_sure_fmt}","${w.inaktif_sure_fmt}","%${w.aktif_oran}"\n`;
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `calisan_calisma_saatleri_raporu_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    showToast('Çalışan çalışma saatleri raporu CSV olarak indirildi!', 'success');
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    initDates();
+    fetchAll();
+});
+if (document.readyState === 'interactive' || document.readyState === 'complete') {
+    initDates();
+    fetchAll();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,45 @@
+auto_start_camera: true
+brightness: 0
+camera_fps: 30
+camera_height: 480
+camera_id: 0
+camera_width: 640
+contrast: 1
+det_imgsz: 320
+flip_h: true
+goster: false
+hareket_esik_orani: 0.04
+headless_mode: true
+istasyon_adi: Istasyon-2
+merkezi_db:
+  aktif: true
+  dbname: fabrika_takip
+  host: 127.0.0.1
+  kullanici: postgres
+  local_retention_days: 7
+  pg_retention_days: 30
+  port: 5432
+  senkron_araligi_sn: 60
+  sifre: ''
+phone_conf: 0.25
+pixel_motion_threshold: 6.0
+pose_imgsz: 256
+roi:
+  x1: 0.0
+  x1_oran: 0.0
+  x2: 1.0
+  x2_oran: 1.0
+  y1: 0.0
+  y1_oran: 0.0
+  y2: 1.0
+  y2_oran: 1.0
+roi_x1: 0.0
+roi_x2: 1.0
+roi_y1: 0.0
+roi_y2: 1.0
+saturation: 1
+save_interval: 1
+station_name: Istasyon-2
+welding_conf: 0.3
+welding_imgsz: 256
+welding_model_path: welding_det.pt

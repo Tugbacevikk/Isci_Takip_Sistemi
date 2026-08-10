@@ -1,0 +1,9 @@
+psycopg2-binary
+ultralytics
+opencv-python
+pyyaml
+numpy
+sqlalchemy>=2.0.0
+alembic>=1.13.0
+python-dotenv>=1.0.0
+

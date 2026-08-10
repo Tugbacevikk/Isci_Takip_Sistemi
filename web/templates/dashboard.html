@@ -1,0 +1,640 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block page_title_sub %}Genel Bakış{% endblock %}
+
+{% block content %}
+
+<!-- ══════════════════════════════════════════════════════════
+     ROW 1: KPI Cards
+════════════════════════════════════════════════════════════ -->
+
+
+
+<!-- ══════════════════════════════════════════════════════════
+     ROW 2: Camera Feed + Status Panel
+════════════════════════════════════════════════════════════ -->
+<div class="row-split">
+
+    <!-- LEFT: Camera Feed (70%) -->
+    <div class="col-70">
+        <div class="card">
+            <div class="card-header" style="flex-wrap:wrap; gap:12px;">
+                <div class="card-header-left">
+                    <i class="fa-solid fa-video card-header-icon"></i>
+                    <h2 class="card-title" id="card-feed-title">Kamera & Video Analizi</h2>
+                    <span class="live-badge" id="live-badge-status">
+                        <span class="live-dot"></span>
+                        CANLI
+                    </span>
+                </div>
+
+                <!-- Mod Seçim Sekmeleri (Canlı Kamera vs Video Analiz) -->
+                <div style="display:flex; align-items:center; background:var(--body-bg, #f1f5f9); border-radius:8px; padding:3px; gap:4px; border:1px solid var(--border-color, #e2e8f0);">
+                    <button id="tab-mode-camera" type="button" class="btn btn-sm" style="padding:4px 12px; font-size:12px; font-weight:600; border-radius:6px; background:var(--card-bg, #fff); color:var(--text-primary, #0f172a); border:1px solid var(--border-color, #cbd5e1);">
+                        <i class="fa-solid fa-camera" style="color:var(--accent); margin-right:4px;"></i> Canlı Kamera
+                    </button>
+                    <button id="tab-mode-video" type="button" class="btn btn-sm" style="padding:4px 12px; font-size:12px; font-weight:600; border-radius:6px; background:transparent; color:var(--text-secondary, #64748b); border:none;">
+                        <i class="fa-solid fa-file-video" style="color:#06B6D4; margin-right:4px;"></i> Video Analiz Et
+                    </button>
+                </div>
+
+                <!-- 1. CANLI KAMERA KONTROLLERİ -->
+                <div class="card-header-right" id="ctrl-group-camera" style="display:flex; align-items:center; gap:8px;">
+                    <select class="form-select form-select--sm" id="cam-select" title="Kamera Seç">
+                        {% if cameras and cameras|length > 0 %}
+                            {% for cam in cameras %}
+                                <option value="{{ cam.id }}">{{ cam.name }}</option>
+                            {% endfor %}
+                        {% else %}
+                            <option value="0">Kamera Bulunamadı</option>
+                        {% endif %}
+                    </select>
+                    <button class="btn-full-tr yesil" id="btn-start" style="padding:8px 18px; font-size:13px;">
+                        <i class="fa-solid fa-circle-play"></i> Kamerayı Başlat
+                    </button>
+                    <button class="btn-full-tr kirmizi" id="btn-stop" style="padding:8px 18px; font-size:13px;">
+                        <i class="fa-solid fa-circle-stop"></i> Durdur
+                    </button>
+                </div>
+
+                <!-- 2. VİDEO DOSYASI ANALİZ KONTROLLERİ -->
+                <div class="card-header-right" id="ctrl-group-video" style="display:none; align-items:center; gap:8px;">
+                    <input type="file" id="input-video-file" accept="video/mp4,video/avi,video/quicktime,video/x-matroska,video/webm" style="display:none;">
+                    <button class="btn btn-secondary btn-sm" id="btn-choose-video" type="button" style="padding:6px 12px; font-size:12px; font-weight:600;">
+                        <i class="fa-solid fa-upload" style="color:var(--accent);"></i> Video Yükle
+                    </button>
+                    <select class="form-select form-select--sm" id="select-uploaded-video" style="max-width:180px;" title="Yüklenen Videolar">
+                        <option value="">Yüklenen Videolar...</option>
+                    </select>
+                    <button class="btn btn-secondary btn-sm" id="btn-delete-video" type="button" style="padding:6px 12px; font-size:12px; font-weight:600; color:var(--red); border-color:rgba(239,68,68,0.3);" title="Seçili Videoyu Sil">
+                        <i class="fa-solid fa-trash" style="color:var(--red);"></i> Sil
+                    </button>
+                    <button class="btn-full-tr yesil" id="btn-start-video" type="button" style="padding:8px 18px; font-size:13px; background:#06B6D4;">
+                        <i class="fa-solid fa-robot"></i> Videoyu Analiz Et
+                    </button>
+                    <button class="btn-full-tr kirmizi" id="btn-stop-video" type="button" style="padding:8px 18px; font-size:13px;">
+                        <i class="fa-solid fa-circle-stop"></i> Durdur
+                    </button>
+                </div>
+            </div>
+
+
+            <div class="card-body p-0">
+                <div class="camera-container">
+                    <img id="camera-feed"
+                         src="/api/video_feed"
+                         alt="Kamera Görüntüsü"
+                         onload="var o=document.getElementById('camera-overlay'); if(o) o.style.display='none'; this.style.display='block';"
+                         onerror="var o=document.getElementById('camera-overlay'); if(o) o.style.display='flex';"
+                    >
+
+                    <!-- Overlay when no signal -->
+                    <div class="camera-overlay" id="camera-overlay" style="display:none;">
+                        <div class="no-signal">
+                            <i class="fa-solid fa-video-slash"></i>
+                            <p>Kamera Bağlantısı Yok</p>
+                            <small>Kamerayı başlatmak için 'Başlat' butonuna basın</small>
+                        </div>
+                    </div>
+                    <!-- Scanning line animation -->
+                    <div class="scan-line" id="scan-line"></div>
+                    <!-- Corner decorators -->
+                    <div class="cam-corner cam-corner--tl"></div>
+                    <div class="cam-corner cam-corner--tr"></div>
+                    <div class="cam-corner cam-corner--bl"></div>
+                    <div class="cam-corner cam-corner--br"></div>
+                </div>
+
+                </div>
+        </div>
+    </div>
+    <!-- END LEFT -->
+
+    <!-- RIGHT: Status Panel (30%) -->
+    <div class="col-30">
+        <div class="card status-panel">
+            <div class="card-header">
+                <div class="card-header-left">
+                    <i class="fa-solid fa-circle-nodes card-header-icon"></i>
+                    <h2 class="card-title">İstasyon Durumu</h2>
+                </div>
+            </div>
+            <div class="card-body">
+
+                <!-- Big Status Circle -->
+                <div class="status-circle-wrap">
+                    <div class="status-circle" id="status-circle">
+                        <div class="status-circle-inner">
+                            <i class="fa-solid fa-person-walking" id="status-circle-icon"></i>
+                        </div>
+                        <div class="status-circle-ring"></div>
+                    </div>
+                </div>
+
+                <!-- Status Text -->
+                <div class="status-text-wrap">
+                    <p class="status-text-big" id="status-text-big">Bekleniyor</p>
+                    <p class="status-update-time">
+                        <i class="fa-regular fa-clock"></i>
+                        Son güncelleme: <span id="last-update-time">—</span>
+                    </p>
+                </div>
+
+                <div class="divider"></div>
+
+                <!-- Mini Stats -->
+                <div class="mini-stats">
+                    <div class="mini-stat-item">
+                        <span class="mini-stat-icon"><i class="fa-solid fa-film"></i></span>
+                        <span class="mini-stat-label">FPS</span>
+                        <span class="mini-stat-val" id="ms-fps">0</span>
+                    </div>
+                    <div class="mini-stat-item">
+                        <span class="mini-stat-icon"><i class="fa-solid fa-industry"></i></span>
+                        <span class="mini-stat-label">İstasyon</span>
+                        <span class="mini-stat-val" id="ms-station">—</span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    <!-- END RIGHT -->
+
+</div>
+<!-- END ROW 2 -->
+
+
+{% endblock %}
+
+
+{% block extra_scripts %}
+<script>
+// ═══════════════════════════════════════════════
+// Dashboard JS
+// ═══════════════════════════════════════════════
+
+// ── KPI Fetch ────────────────────────────────────────────────
+function fetchKPIs() {
+    fetch('/api/reports/summary')
+        .then(r => r.json())
+        .then(data => {
+            // Alarm count
+            const alarmCount = (data.alarm_count !== undefined ? data.alarm_count : (data.alarms || 0));
+            document.getElementById('kpi-alarm-val').textContent = alarmCount;
+
+            // Active / inactive
+            const total  = (data.active || 0) + (data.inactive || 0);
+            const pct    = total > 0 ? Math.round((data.active || 0) / total * 100) : 0;
+            document.getElementById('kpi-fps-sub').textContent = `Aktif: ${pct}%`;
+        })
+        .catch(() => {});
+}
+fetchKPIs();
+setInterval(fetchKPIs, 30000);
+
+// ── Alarm badge fetch ────────────────────────────────────────
+function fetchAlarmBadge() {
+    fetch('/api/alarms/unread_count')
+        .then(r => r.json())
+        .then(data => {
+            const c = data.count || data.unread_count || 0;
+            const badge = document.getElementById('alarm-count-badge');
+            if (badge) { badge.style.display = c > 0 ? 'inline-flex' : 'none'; badge.textContent = c; }
+            document.getElementById('kpi-alarm-val').textContent = c;
+        }).catch(() => {});
+}
+fetchAlarmBadge();
+
+// ── Quick Alarm Log ──────────────────────────────────────────
+function fetchQuickAlarms() {
+    fetch('/api/alarms?limit=3')
+        .then(r => r.json())
+        .then(data => {
+            const list   = document.getElementById('quick-alarm-list');
+            const alarms = data.alarms || (Array.isArray(data) ? data : []);
+            if (!alarms.length) {
+                list.innerHTML = `
+                    <div class="quick-alarm-empty" style="padding:15px; text-align:center; color:var(--text-secondary);">
+                        <i class="fa-solid fa-check-circle" style="color:var(--green); margin-right:6px;"></i>
+                        <span>Henüz alarm kaydı bulunmuyor</span>
+                    </div>`;
+                return;
+            }
+            list.innerHTML = alarms.map(a => {
+                const atype = (a.alarm_turu || a.type || 'Alarm');
+                const isPhone = atype.toLowerCase().includes('telefon');
+                const desc = a.aciklama || a.station || a.istasyon_adi || 'Alarm Kaydı';
+                const timeStr = a.zaman || a.time || '—';
+                return `
+                <div class="quick-alarm-item quick-alarm-item--${isPhone ? 'red' : 'orange'}" style="padding:8px 12px; margin-bottom:6px; border-radius:8px; background:var(--bg-secondary); display:flex; align-items:center; justify-content:space-between;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <i class="fa-solid ${isPhone ? 'fa-phone' : 'fa-triangle-exclamation'}" style="color:${isPhone ? 'var(--red)' : 'var(--orange)'}"></i>
+                        <div>
+                            <strong style="font-size:12px; display:block;">${atype}</strong>
+                            <small style="font-size:11px; color:var(--text-secondary);">${desc}</small>
+                        </div>
+                    </div>
+                    <span style="font-size:11px; color:var(--text-secondary);">${timeStr}</span>
+                </div>
+            `}).join('');
+        }).catch(() => {});
+}
+fetchQuickAlarms();
+
+// ── Mode Switcher (Canlı Kamera vs Video Analiz) ─────────────
+const tabCam = document.getElementById('tab-mode-camera');
+const tabVid = document.getElementById('tab-mode-video');
+const groupCam = document.getElementById('ctrl-group-camera');
+const groupVid = document.getElementById('ctrl-group-video');
+
+function loadUploadedVideos() {
+    fetch('/api/video/list')
+        .then(r => r.json())
+        .then(data => {
+            const select = document.getElementById('select-uploaded-video');
+            if (data.videos && data.videos.length) {
+                select.innerHTML = '<option value="">Yüklenen Videolar...</option>' + 
+                    data.videos.map(v => `<option value="${v.path}">${v.filename} (${v.size_mb} MB)</option>`).join('');
+            } else {
+                select.innerHTML = '<option value="">Yüklenen Video Yok</option>';
+            }
+        }).catch(() => {});
+}
+
+if (tabCam && tabVid) {
+    tabCam.addEventListener('click', () => {
+        tabCam.style.background = 'var(--card-bg, #fff)';
+        tabCam.style.color = 'var(--text-primary, #0f172a)';
+        tabCam.style.border = '1px solid var(--border-color, #cbd5e1)';
+        tabVid.style.background = 'transparent';
+        tabVid.style.color = 'var(--text-secondary, #64748b)';
+        tabVid.style.border = 'none';
+
+        groupCam.style.display = 'flex';
+        groupVid.style.display = 'none';
+    });
+
+    tabVid.addEventListener('click', () => {
+        tabVid.style.background = 'var(--card-bg, #fff)';
+        tabVid.style.color = 'var(--text-primary, #0f172a)';
+        tabVid.style.border = '1px solid var(--border-color, #cbd5e1)';
+        tabCam.style.background = 'transparent';
+        tabCam.style.color = 'var(--text-secondary, #64748b)';
+        tabCam.style.border = 'none';
+
+        groupCam.style.display = 'none';
+        groupVid.style.display = 'flex';
+        loadUploadedVideos();
+    });
+}
+
+// Video Yükleme
+if (document.getElementById('btn-choose-video')) {
+    document.getElementById('btn-choose-video').addEventListener('click', () => {
+        document.getElementById('input-video-file').click();
+    });
+}
+
+if (document.getElementById('input-video-file')) {
+    document.getElementById('input-video-file').addEventListener('change', function() {
+        if (!this.files || !this.files[0]) return;
+        const file = this.files[0];
+        const formData = new FormData();
+        formData.append('video', file);
+
+        const btnChoose = document.getElementById('btn-choose-video');
+        btnChoose.disabled = true;
+        btnChoose.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Yükleniyor...';
+
+        fetch('/api/video/upload', {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.json().catch(() => ({ success: false, error: 'Sunucu yanıtı okunamadı (HTTP ' + r.status + ')' })))
+        .then(data => {
+            if (data.success) {
+                showToast('Video başarıyla yüklendi!', 'success');
+                loadUploadedVideos();
+                setTimeout(() => {
+                    const select = document.getElementById('select-uploaded-video');
+                    select.value = data.video_path;
+                }, 300);
+            } else {
+                showToast(data.error || data.message || 'Video yüklenemedi', 'error');
+            }
+        })
+        .catch(e => showToast('Yükleme hatası: ' + e, 'error'))
+        .finally(() => {
+            btnChoose.disabled = false;
+            btnChoose.innerHTML = '<i class="fa-solid fa-upload" style="color:var(--accent);"></i> Video Yükle';
+        });
+    });
+}
+
+// Videoyu Sil
+if (document.getElementById('btn-delete-video')) {
+    document.getElementById('btn-delete-video').addEventListener('click', function() {
+        const select = document.getElementById('select-uploaded-video');
+        const videoPath = select ? select.value : '';
+        if (!videoPath) {
+            showToast('Lütfen önce silmek istediğiniz videoyu listeden seçin!', 'warning');
+            return;
+        }
+
+        const fileName = videoPath.split(/[\/\\]/).pop();
+        if (!confirm(`"${fileName}" isimli videoyu silmek istediğinize emin misiniz?`)) {
+            return;
+        }
+
+        this.disabled = true;
+        this.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Siliniyor...';
+
+        fetch('/api/video/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ video_path: videoPath, filename: fileName })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Video başarıyla silindi.', 'success');
+                loadUploadedVideos();
+            } else {
+                showToast(data.error || 'Video silinemedi', 'error');
+            }
+        })
+        .catch(err => showToast('Silme hatası: ' + err, 'error'))
+        .finally(() => {
+            this.disabled = false;
+            this.innerHTML = '<i class="fa-solid fa-trash" style="color:var(--red);"></i> Sil';
+        });
+    });
+}
+
+// Videoyu Analiz Et
+if (document.getElementById('btn-start-video')) {
+    document.getElementById('btn-start-video').addEventListener('click', function() {
+        const videoPath = document.getElementById('select-uploaded-video').value;
+        if (!videoPath) {
+            showToast('Lütfen önce bir video yükleyin veya listeden seçin!', 'warning');
+            return;
+        }
+
+        this.disabled = true;
+        this.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Başlatılıyor...';
+
+        fetch('/api/video/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ source_type: 'video', video_path: videoPath })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Video yapay zeka analizi başlatıldı!', 'success');
+                const ov = document.getElementById('camera-overlay');
+                if (ov) ov.style.display = 'none';
+                const sl = document.getElementById('scan-line');
+                if (sl) sl.style.display = 'block';
+
+                const feed = document.getElementById('camera-feed');
+                if (feed) {
+                    feed.style.display = 'block';
+                    feed.src = '/api/video_feed?' + Date.now();
+                }
+            } else {
+                showToast('Video analizi başlatılamadı: ' + data.message, 'error');
+            }
+        })
+        .catch(err => console.error('Video start error:', err))
+        .finally(() => {
+            this.disabled = false;
+            this.innerHTML = '<i class="fa-solid fa-robot"></i> Videoyu Analiz Et';
+        });
+    });
+}
+
+if (document.getElementById('btn-stop-video')) {
+    document.getElementById('btn-stop-video').addEventListener('click', function() {
+        document.getElementById('btn-stop').click();
+    });
+}
+
+// ── Camera Start / Stop ──────────────────────────────────────
+
+document.getElementById('btn-start').addEventListener('click', function() {
+    if (this.dataset.loading === 'true') return;
+    this.dataset.loading = 'true';
+    const camId = document.getElementById('cam-select').value;
+    this.disabled = true;
+    this.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Başlatılıyor...';
+    fetch('/api/camera/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ camera_id: parseInt(camId) })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success || data.status === 'ok') {
+            showToast('Kamera başarıyla başlatıldı!', 'success');
+            const ov = document.getElementById('camera-overlay');
+            if (ov) ov.style.display = 'none';
+            const sl = document.getElementById('scan-line');
+            if (sl) sl.style.display = 'block';
+            const lst = document.getElementById('live-status-text');
+            if (lst) lst.textContent = 'Kamera Aktif';
+            const lsd = document.getElementById('live-status-dot');
+            if (lsd) lsd.className = 'live-status-dot active';
+
+            const feed = document.getElementById('camera-feed');
+            if (feed) {
+                feed.style.display = 'block';
+                feed.src = '/api/video_feed?' + Date.now();
+            }
+        } else {
+            showToast(data.message || 'Kamera başlatılamadı', 'error');
+        }
+    })
+    .catch(err => {
+        console.error('Camera start error:', err);
+    })
+    .finally(() => {
+        this.disabled = false;
+        this.dataset.loading = 'false';
+        this.innerHTML = '<i class="fa-solid fa-circle-play"></i> Başlat';
+    });
+
+});
+
+document.getElementById('btn-stop').addEventListener('click', function() {
+    this.disabled = true;
+    this.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Durduruluyor...';
+    
+    const feed = document.getElementById('camera-feed');
+    if (feed) feed.src = '';
+
+    fetch('/api/camera/stop', { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+        showToast('Kamera durduruldu.', 'info');
+        const ov = document.getElementById('camera-overlay');
+        if (ov) ov.style.display = 'flex';
+        const sl = document.getElementById('scan-line');
+        if (sl) sl.style.display = 'none';
+        const lst = document.getElementById('live-status-text');
+        if (lst) lst.textContent = 'Kamera Durduruldu';
+        const lsd = document.getElementById('live-status-dot');
+        if (lsd) lsd.className = 'live-status-dot inactive';
+    })
+    .catch(err => {
+        console.error('Camera stop error:', err);
+    })
+    .finally(() => {
+        this.disabled = false;
+        this.innerHTML = '<i class="fa-solid fa-circle-stop"></i> Durdur';
+    });
+});
+
+function formatConfidencePct(rawConf) {
+    if (rawConf === undefined || rawConf === null || rawConf <= 0) return '';
+    let val = parseFloat(rawConf);
+    if (isNaN(val) || val <= 0) return '';
+
+    if (val <= 1.0) {
+        val = val * 100;
+    }
+    while (val > 100) {
+        val = val / 100;
+    }
+
+    const pct = Math.min(100, Math.max(1, Math.round(val)));
+    return ` (%${pct})`;
+}
+
+// ── Socket.IO Status Updates ─────────────────────────────────
+if (window._socket) {
+    window._socket.on('status_update', function(data) {
+        if (!data) return;
+
+        // FPS
+        if (data.fps !== undefined) {
+            if (document.getElementById('kpi-fps-val')) document.getElementById('kpi-fps-val').textContent = parseFloat(data.fps).toFixed(1);
+            if (document.getElementById('ms-fps')) document.getElementById('ms-fps').textContent = parseFloat(data.fps).toFixed(1);
+        }
+
+        // Person count
+        const pCnt = data.kisi_sayisi !== undefined ? data.kisi_sayisi : (data.person_count !== undefined ? data.person_count : (data.worker_name ? 1 : 0));
+        if (document.getElementById('ms-kisi')) document.getElementById('ms-kisi').textContent = pCnt;
+        if (document.getElementById('kpi-calisan-val')) document.getElementById('kpi-calisan-val').textContent = pCnt;
+
+        // Station
+        const stationName = data.istasyon || data.station || '—';
+        if (document.getElementById('ms-station')) document.getElementById('ms-station').textContent = stationName;
+
+        // Status Circle & Big Status Text
+        const curDurum = data.durum || data.status || 'Bekleniyor';
+        const statusCircle = document.getElementById('status-circle');
+        const statusText   = document.getElementById('status-text-big');
+        const statusIcon   = document.getElementById('status-circle-icon');
+
+        if (statusText) statusText.textContent = curDurum;
+        if (statusCircle) {
+            const st = curDurum.toLowerCase();
+            statusCircle.className = 'status-circle status-circle--' +
+                (st.includes('aktif') || st.includes('active') ? 'active' :
+                 st.includes('alarm') || st.includes('telefon') || st.includes('inaktif') ? 'alarm' : 'idle');
+            if (statusIcon) {
+                if (st.includes('aktif') || st.includes('active')) {
+                    statusIcon.className = 'fa-solid fa-person-walking';
+                } else if (st.includes('telefon') || st.includes('alarm')) {
+                    statusIcon.className = 'fa-solid fa-phone';
+                } else {
+                    statusIcon.className = 'fa-solid fa-person';
+                }
+            }
+        }
+
+        // Worker Name (Oranlar kesin olarak temizlendi)
+        const cwElem = document.getElementById('current-worker');
+        if (cwElem) {
+            if (data.worker_name && data.worker_name.trim() !== '') {
+                const cleanName = data.worker_name.replace(/\s*\([^)]*\)/g, '').trim();
+                cwElem.innerHTML = `<i class="fa-solid fa-user-tie"></i> ${cleanName}`;
+            } else {
+                cwElem.innerHTML = `<i class="fa-solid fa-user-tie"></i> Çalışan tespit edilmedi`;
+            }
+        }
+
+        // Last Update Time
+        const updateElem = document.getElementById('last-update-time');
+        if (updateElem) {
+            updateElem.textContent = data.zaman || data.last_update || new Date().toLocaleTimeString('tr-TR');
+        }
+    });
+}
+
+// ── Camera status poll ───────────────────────────────────────
+function pollCameraStatus() {
+    fetch('/api/camera/status')
+        .then(r => r.json())
+        .then(data => {
+            if (!data) return;
+
+            if (data.fps !== undefined) {
+                if (document.getElementById('kpi-fps-val')) document.getElementById('kpi-fps-val').textContent = parseFloat(data.fps).toFixed(1);
+                if (document.getElementById('ms-fps')) document.getElementById('ms-fps').textContent = parseFloat(data.fps).toFixed(1);
+            }
+
+            const pCnt = data.kisi_sayisi !== undefined ? data.kisi_sayisi : (data.person_count !== undefined ? data.person_count : (data.worker_name ? 1 : 0));
+            if (document.getElementById('ms-kisi')) document.getElementById('ms-kisi').textContent = pCnt;
+
+            const stationName = data.istasyon || data.station || '—';
+            if (document.getElementById('ms-station')) document.getElementById('ms-station').textContent = stationName;
+
+            const curDurum = data.durum || data.status;
+            if (curDurum) {
+                const statusText = document.getElementById('status-text-big');
+                if (statusText) statusText.textContent = curDurum;
+            }
+
+            const cwElem = document.getElementById('current-worker');
+            if (cwElem) {
+                if (data.worker_name && data.worker_name.trim() !== '') {
+                    const cleanName = data.worker_name.replace(/\s*\([^)]*\)/g, '').trim();
+                    cwElem.innerHTML = `<i class="fa-solid fa-user-tie"></i> ${cleanName}`;
+                } else {
+                    cwElem.innerHTML = `<i class="fa-solid fa-user-tie"></i> Çalışan tespit edilmedi`;
+                }
+            }
+
+            const updateElem = document.getElementById('last-update-time');
+            if (updateElem) {
+                updateElem.textContent = data.zaman || data.last_update || new Date().toLocaleTimeString('tr-TR');
+            }
+        }).catch(() => {});
+}
+// ── Load camera list dynamically ─────────────────────────────
+function loadCameraSelect() {
+    fetch('/api/camera/list')
+        .then(r => r.json())
+        .then(data => {
+            const select = document.getElementById('cam-select');
+            if (!select) return;
+            const cams = data.cameras || data.camera_list || [];
+            if (cams.length > 0) {
+                const currentVal = select.value;
+                select.innerHTML = cams.map(c => 
+                    `<option value="${c.id}" ${c.id == currentVal ? 'selected' : ''}>${c.name}</option>`
+                ).join('');
+            }
+        })
+        .catch(() => {});
+}
+loadCameraSelect();
+pollCameraStatus();
+setInterval(pollCameraStatus, 2000);
+</script>
+{% endblock %}

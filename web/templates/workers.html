@@ -1,0 +1,286 @@
+{% extends 'base.html' %}
+
+{% block title %}Çalışan Yönetimi{% endblock %}
+{% block page_title %}Çalışanlar{% endblock %}
+{% block page_title_sub %}Çalışan Listesi & İstasyon Atama{% endblock %}
+
+{% block content %}
+
+<!-- ── TOP BAR ─────────────────────────────────────────────── -->
+<div class="top-action-bar" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:12px;">
+    <div class="top-bar-left" style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+        {% if current_user %}
+        <button class="btn-full-tr mor" id="btn-add-worker" onclick="openWorkerModal()" style="padding:12px 24px; font-size:14px;">
+            <i class="fa-solid fa-user-plus"></i> Yeni Çalışan Ekle
+        </button>
+        {% endif %}
+        <span class="status-badge aktif" id="total-worker-count">
+            <i class="fa-solid fa-users"></i>
+            {{ workers|length if workers else 0 }} Çalışan Kayıtlı
+        </span>
+    </div>
+    <div class="top-bar-right">
+        <input type="text" class="form-input" id="worker-search" style="width:280px;"
+               placeholder="Çalışan veya istasyon ara..."
+               oninput="filterWorkers(this.value)">
+    </div>
+</div>
+
+<!-- ── WORKERS GRID ──────────────────────────────────────────── -->
+<div class="kpi-grid" id="workers-grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
+    {% if workers %}
+        {% for worker in workers %}
+        <div class="card worker-card"
+             data-name="{{ (worker.ad ~ ' ' ~ worker.soyad)|lower }}"
+             data-sicil="{{ worker.sicil_no|lower if worker.sicil_no else '' }}"
+             data-dept="{{ worker.departman|lower if worker.departman else '' }}"
+             data-station="{{ worker.istasyon_adi|lower if worker.istasyon_adi else '' }}"
+             data-id="{{ worker.id }}" style="margin-bottom:0; padding:20px;">
+
+            <div style="display:flex; flex-direction:column; align-items:center; text-align:center; gap:12px;">
+                <div style="width:70px; height:70px; border-radius:50%; background:var(--accent-light, #e0e7ff); color:var(--accent, #4f46e5); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:24px; border:2px solid var(--accent);">
+                    {{ worker.ad[0]|upper }}{{ worker.soyad[0]|upper if worker.soyad else '' }}
+                </div>
+
+                <div>
+                    <h3 style="font-size:17px; font-weight:700; color:var(--text-primary);">{{ worker.ad }} {{ worker.soyad }}</h3>
+                    <div style="font-size:13px; color:var(--text-secondary); margin-top:4px;">
+                        <span><i class="fa-solid fa-id-badge"></i> {{ worker.sicil_no if worker.sicil_no else 'Sicil Yok' }}</span> • 
+                        <span>{{ worker.departman if worker.departman else 'Departman Yok' }}</span>
+                    </div>
+                </div>
+
+                <!-- Atanan İstasyon Rozeti -->
+                <div style="margin-top:4px;">
+                    <span class="badge {% if worker.istasyon_adi %}badge--success{% else %}badge--warning{% endif %}" style="padding:6px 14px; font-size:12px; border-radius:20px;">
+                        <i class="fa-solid fa-industry"></i>
+                        {{ worker.istasyon_adi if worker.istasyon_adi else 'İstasyon Atanmadı' }}
+                    </span>
+                </div>
+
+                <div style="font-size:11px; color:var(--text-muted); display:flex; justify-content:space-between; align-items:center; width:100%; margin-top:6px;">
+                    <span>Kayıt: {{ worker.kayit_tarihi if worker.kayit_tarihi else '—' }}</span>
+                </div>
+
+                {% if current_user %}
+                <div style="display:flex; gap:8px; width:100%; margin-top:8px;">
+                    <button class="btn btn-secondary" style="flex:1; padding:8px 12px; font-size:13px;"
+                            onclick="openWorkerModal(this)"
+                            data-id="{{ worker.id }}"
+                            data-ad="{{ worker.ad }}"
+                            data-soyad="{{ worker.soyad }}"
+                            data-sicil="{{ worker.sicil_no|default('') }}"
+                            data-dept="{{ worker.departman|default('') }}"
+                            data-station="{{ worker.istasyon_adi|default('') }}">
+                        <i class="fa-solid fa-pen"></i> Düzenle / İstasyon Değiştir
+                    </button>
+                    <button class="btn btn-danger" style="padding:8px 12px; font-size:13px;"
+                            onclick="deleteWorker(this)"
+                            data-id="{{ worker.id }}"
+                            data-name="{{ worker.ad }} {{ worker.soyad }}">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="card" style="grid-column: 1 / -1; text-align:center; padding:40px;">
+            <i class="fa-solid fa-users-slash" style="font-size:48px; color:var(--text-muted); margin-bottom:16px;"></i>
+            <h3>Kayıtlı çalışan bulunamadı</h3>
+            <p style="color:var(--text-secondary); margin-bottom:20px;">Yeni çalışan ekleyerek bir istasyona (ör. İstasyon-A) atayabilirsiniz.</p>
+            {% if current_user %}
+            <button class="btn btn-primary" onclick="openWorkerModal()">
+                <i class="fa-solid fa-user-plus"></i> Yeni Çalışan Ekle
+            </button>
+            {% else %}
+            <a href="/login" class="btn btn-primary">
+                <i class="fa-solid fa-right-to-bracket"></i> Giriş Yap
+            </a>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     MODAL DIALOG: Çalışan Ekle / Düzenle
+════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-worker" style="display:none;" onclick="closeWorkerModal(event)">
+    <div class="modal" style="max-width:550px; width:95%;" onclick="event.stopPropagation()">
+
+        <!-- Header -->
+        <div class="modal-header">
+            <h2 class="modal-title" id="modal-title">
+                <i class="fa-solid fa-user-pen"></i> Çalışan Bilgileri & İstasyon Ataması
+            </h2>
+            <button class="modal-close" onclick="closeWorkerModal()">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <!-- Body -->
+        <div class="modal-body">
+            <form id="worker-form" onsubmit="submitWorkerForm(event)">
+                <input type="hidden" id="worker-id" name="worker_id" value="">
+
+                <div class="form-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:20px;">
+                    <div class="form-group">
+                        <label class="form-label" for="w-ad">Ad <span style="color:red">*</span></label>
+                        <input type="text" class="form-input" id="w-ad" name="ad" placeholder="Örn: Kadir" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="w-soyad">Soyad <span style="color:red">*</span></label>
+                        <input type="text" class="form-input" id="w-soyad" name="soyad" placeholder="Örn: Kaya" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="w-sicil">Sicil No</label>
+                        <input type="text" class="form-input" id="w-sicil" name="sicil_no" placeholder="Örn: EMP-001">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="w-dept">Departman</label>
+                        <input type="text" class="form-input" id="w-dept" name="departman" placeholder="Örn: Kaynak Atölyesi">
+                    </div>
+                </div>
+
+                <!-- Atanan İstasyon -->
+                <div class="form-group" style="margin-bottom:24px;">
+                    <label class="form-label" for="w-station">
+                        <i class="fa-solid fa-industry" style="color:var(--accent);"></i> Atanacak İstasyon
+                    </label>
+                    <select class="form-select" id="w-station" name="istasyon_adi">
+                        <option value="">— İstasyon Seçin —</option>
+                        {% set p_stations = (current_user.istasyonlar or '').split(',') if current_user and current_user.rol == 'patron' else [] %}
+                        {% for n in range(1, 11) %}
+                        {% set st_cur = 'Istasyon-' ~ n %}
+                        {% if not current_user or current_user.rol == 'admin' or not current_user.istasyonlar or st_cur in p_stations %}
+                        <option value="{{ st_cur }}">{{ st_cur }}</option>
+                        {% endif %}
+                        {% endfor %}
+                    </select>
+                    <small style="color:var(--text-muted); font-size:11px; margin-top:4px; display:block;">
+                        Bu çalışanın görev yapacağı istasyonu seçin. Kameranın bağlı olduğu istasyondaki tüm aktiviteler otomatik bu çalışanla eşleşir.
+                    </small>
+                </div>
+
+                <!-- Submit Buttons -->
+                <div class="modal-footer" style="padding:16px 0 0 0; border:none; display:flex; gap:10px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeWorkerModal()">
+                        İptal
+                    </button>
+                    <button type="submit" class="btn btn-success" id="btn-worker-save" style="flex:1;">
+                        <i class="fa-solid fa-floppy-disk"></i> Kaydet
+                    </button>
+                </div>
+            </form>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function openWorkerModal(btn) {
+    const modal = document.getElementById('modal-worker');
+    const title = document.getElementById('modal-title');
+    const form = document.getElementById('worker-form');
+    
+    if (btn && btn.dataset && btn.dataset.id) {
+        document.getElementById('worker-id').value = btn.dataset.id;
+        document.getElementById('w-ad').value = btn.dataset.ad || '';
+        document.getElementById('w-soyad').value = btn.dataset.soyad || '';
+        document.getElementById('w-sicil').value = btn.dataset.sicil || '';
+        document.getElementById('w-dept').value = btn.dataset.dept || '';
+        // Set dropdown to current station value
+        const stSelect = document.getElementById('w-station');
+        const stVal = btn.dataset.station || '';
+        stSelect.value = stVal;
+        // If exact match not found (old format like İstasyon-A), leave as blank
+        if (stSelect.value !== stVal) stSelect.value = '';
+        title.innerHTML = '<i class="fa-solid fa-user-pen"></i> Çalışan Bilgilerini Düzenle';
+    } else {
+        form.reset();
+        document.getElementById('worker-id').value = '';
+        document.getElementById('w-station').value = '';
+        title.innerHTML = '<i class="fa-solid fa-user-plus"></i> Yeni Çalışan Ekle';
+    }
+    
+    modal.style.display = 'flex';
+}
+
+function closeWorkerModal(event) {
+    if (!event || event.target.id === 'modal-worker' || event.target.closest('.modal-close') || event.target.classList.contains('btn-secondary')) {
+        document.getElementById('modal-worker').style.display = 'none';
+    }
+}
+
+function submitWorkerForm(e) {
+    e.preventDefault();
+    const workerId = document.getElementById('worker-id').value;
+    const ad = document.getElementById('w-ad').value.trim();
+    const soyad = document.getElementById('w-soyad').value.trim();
+    const sicil = document.getElementById('w-sicil').value.trim();
+    const dept = document.getElementById('w-dept').value.trim();
+    const station = document.getElementById('w-station').value.trim();
+
+    const payload = { ad, soyad, sicil_no: sicil, departman: dept, istasyon_adi: station };
+
+    const url = workerId ? `/api/workers/${workerId}/update` : '/api/workers';
+    const method = 'POST';
+
+    fetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message || 'Başarıyla kaydedildi', 'success');
+            closeWorkerModal();
+            setTimeout(() => window.location.reload(), 800);
+        } else {
+            showToast(data.message || 'Hata oluştu', 'error');
+        }
+    })
+    .catch(err => {
+        showToast('Sunucu hatası: ' + err, 'error');
+    });
+}
+
+function deleteWorker(btn) {
+    const id = btn.dataset.id;
+    const name = btn.dataset.name;
+    if (!confirm(`${name} isimli çalışanı silmek istediğinize emin misiniz?`)) return;
+
+    fetch(`/api/workers/${id}/delete`, { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Çalışan silindi.', 'success');
+            setTimeout(() => window.location.reload(), 600);
+        } else {
+            showToast(data.message || 'Silme başarısız.', 'error');
+        }
+    });
+}
+
+function filterWorkers(query) {
+    const q = query.toLowerCase().trim();
+    const cards = document.querySelectorAll('.worker-card');
+    cards.forEach(card => {
+        const name = card.dataset.name || '';
+        const sicil = card.dataset.sicil || '';
+        const dept = card.dataset.dept || '';
+        const station = card.dataset.station || '';
+        if (name.includes(q) || sicil.includes(q) || dept.includes(q) || station.includes(q)) {
+            card.style.display = 'block';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,15 @@
+names:
+- welding
+nc: 1
+roboflow:
+  license: CC BY 4.0
+  project: fire-welding-detection-caqhk
+  url: https://universe.roboflow.com/tugba-cevik/fire-welding-detection-caqhk/dataset/1
+  version: 1
+  workspace: tugba-cevik
+test: C:\Users\Kadir\Desktop\takipsistemi\takipsistemi\takipsistemi\fire- welding
+  detection.v1i.yolov8\fire- welding detection.v1i.yolov8\test\images
+train: C:\Users\Kadir\Desktop\takipsistemi\takipsistemi\takipsistemi\fire- welding
+  detection.v1i.yolov8\fire- welding detection.v1i.yolov8\train\images
+val: C:\Users\Kadir\Desktop\takipsistemi\takipsistemi\takipsistemi\fire- welding detection.v1i.yolov8\fire-
+  welding detection.v1i.yolov8\valid\images

@@ -1,0 +1,792 @@
+{% extends 'base.html' %}
+
+{% block title %}Kamera Yönetimi{% endblock %}
+{% block page_title %}Kameralar{% endblock %}
+{% block page_title_sub %}Kamera Yönetimi ve Ayarları{% endblock %}
+
+{% block content %}
+
+<div class="two-col-layout">
+
+    <!-- ════════════════════════════════════════════
+         LEFT COLUMN
+    ════════════════════════════════════════════ -->
+    <div class="col-left">
+
+        <!-- Card: Camera Selection -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-header-left">
+                    <i class="fa-solid fa-video card-header-icon"></i>
+                    <h2 class="card-title">Kamera Seçimi ve Kontrol</h2>
+                </div>
+                <button class="btn btn--outline btn--sm" id="btn-scan">
+                    <i class="fa-solid fa-magnifying-glass"></i> Kameraları Tara
+                </button>
+            </div>
+            <div class="card-body">
+
+                <!-- Adim Rehberi -->
+                <div class="adim-sirasi">
+                    <div class="adim">
+                        <span class="adim-no">1</span>
+                        <span>Aşağıdaki listeden bir kamera seçin veya <strong>Kameraları Tara</strong> butonuna basın</span>
+                    </div>
+                    <div class="adim">
+                        <span class="adim-no">2</span>
+                        <span><strong>Kamerayı Başlat</strong> butonuna basarak canlı yayını açın</span>
+                    </div>
+                    <div class="adim">
+                        <span class="adim-no">3</span>
+                        <span><strong>Canlı Önizleme</strong> ekranından yayını ve ROI alanını takip edin</span>
+                    </div>
+                </div>
+
+                <!-- Camera List -->
+                <div class="camera-list" id="camera-list">
+                    {% if cameras and cameras|length > 0 %}
+                        {% for cam in cameras %}
+                        <div class="camera-item {% if loop.first %}camera-item--selected{% endif %}"
+                             data-cam-id="{{ cam.id }}"
+                             onclick="selectCamera(this)">
+                            <div class="cam-item-icon">
+                                <i class="fa-solid fa-video"></i>
+                            </div>
+                            <div class="cam-item-info">
+                                <span class="cam-item-name">{{ cam.name }}</span>
+                                <span class="cam-item-sub">ID: {{ cam.id }}</span>
+                            </div>
+                            <span class="cam-status-dot {% if cam.active %}cam-dot--active{% else %}cam-dot--idle{% endif %}"
+                                  title="{% if cam.active %}Aktif{% else %}Pasif{% endif %}">
+                            </span>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty-state empty-state--sm" id="no-cameras-msg">
+                            <i class="fa-solid fa-video-slash"></i>
+                            <p>Sistemde aktif kamera bulunamadı</p>
+                            <small>Kameraları taramak için aşağıdaki butonu kullanın</small>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Selected Camera Info -->
+                <div class="selected-cam-info" id="selected-cam-info">
+                    <div class="info-row">
+                        <span class="info-key"><i class="fa-solid fa-hashtag"></i> Seçili Kamera</span>
+                        <span class="info-val" id="sel-cam-id">—</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-key"><i class="fa-solid fa-circle"></i> Durum</span>
+                        <span class="info-val" id="sel-cam-status">Pasif</span>
+                    </div>
+                </div>
+
+                <div class="btn-group mt-3" style="display:flex; flex-direction:column; gap:10px;">
+                    <button class="btn-full-tr yesil" id="btn-cam-start">
+                        <i class="fa-solid fa-circle-play"></i>
+                        Kamerayı Baslat
+                    </button>
+                    <button class="btn-full-tr kirmizi" id="btn-cam-stop">
+                        <i class="fa-solid fa-circle-stop"></i>
+                        Kamerayı Durdur
+                    </button>
+                </div>
+
+                <!-- Current Status Display -->
+                <div class="cam-current-status mt-3" id="cam-current-status">
+                    <div class="status-pill status-pill--idle">
+                        <span class="status-pill-dot"></span>
+                        <span id="cam-status-text">Kamera Pasif</span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+        <!-- END Camera Selection Card -->
+
+
+        <!-- Card: Live Preview -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-header-left">
+                    <i class="fa-solid fa-eye card-header-icon"></i>
+                    <h2 class="card-title">Canlı Önizleme</h2>
+                </div>
+                <span class="live-badge" id="preview-live-badge">
+                    <span class="live-dot"></span> CANLI
+                </span>
+            </div>
+                <div class="camera-preview-wrap" style="position:relative; width:100%; border-radius: 0 0 12px 12px; overflow:hidden; background:#000; display:flex; align-items:center; justify-content:center;">
+                    <img src="/api/video_feed"
+                         id="preview-feed"
+                         alt="Canlı Önizleme"
+                         style="width:100%; max-height:540px; object-fit:contain; display:block; border-radius: 0 0 12px 12px;"
+                         onload="this.style.display='block'; var ns=document.getElementById('preview-no-signal'); if(ns) ns.style.display='none';"
+                         onerror="this.style.display='none'; var ns=document.getElementById('preview-no-signal'); if(ns) ns.style.display='flex';">
+
+                    <div class="no-signal preview-no-signal" id="preview-no-signal" style="display:none;">
+                        <i class="fa-solid fa-video-slash"></i>
+                        <p>Görüntü Yok</p>
+                    </div>
+
+                    <!-- Canlı ROI Overlay (kaydırıcılara bağlı) -->
+                    <div id="preview-roi-overlay" style="
+                        position:absolute; pointer-events:none;
+                        top:0; left:0; right:0; bottom:0;
+                        border-radius: 0 0 12px 12px;
+                        overflow:hidden;
+                    ">
+                        <!-- ROI Alanı Dışı Karartma: Üst -->
+                        <div id="roi-shade-top" style="position:absolute; top:0; left:0; right:0; background:rgba(0,0,0,0.35);"></div>
+                        <!-- ROI Alanı Dışı Karartma: Alt -->
+                        <div id="roi-shade-bottom" style="position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,0.35);"></div>
+                        <!-- ROI Alanı Dışı Karartma: Sol -->
+                        <div id="roi-shade-left" style="position:absolute; background:rgba(0,0,0,0.35);"></div>
+                        <!-- ROI Alanı Dışı Karartma: Sağ -->
+                        <div id="roi-shade-right" style="position:absolute; background:rgba(0,0,0,0.35);"></div>
+                        <!-- ROI Çerçeve Kenarlığı -->
+                        <div id="roi-border-box" style="position:absolute; border:2px solid #00ff88; border-radius:3px; box-shadow:0 0 0 1px rgba(0,255,136,0.3), inset 0 0 0 1px rgba(0,255,136,0.2);"></div>
+                        <!-- ROI Etiket -->
+                        <div id="roi-label-overlay" style="position:absolute; background:rgba(0,255,136,0.9); color:#000; font-size:11px; font-weight:700; padding:2px 8px; border-radius:0 0 6px 0; top:0; left:0;"></div>
+                    </div>
+
+                    <!-- Overlay info -->
+                    <div class="preview-overlay-bar">
+                        <span id="preview-fps-text"><i class="fa-solid fa-film"></i> 0 FPS</span>
+                        <span id="preview-time-text"><i class="fa-regular fa-clock"></i> --:--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- END Live Preview Card -->
+
+    </div>
+    <!-- END LEFT COLUMN -->
+
+
+    <!-- ════════════════════════════════════════════
+         RIGHT COLUMN
+    ════════════════════════════════════════════ -->
+    <div class="col-right">
+
+        <!-- Card: ROI Settings -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-header-left">
+                    <i class="fa-solid fa-crop-simple card-header-icon"></i>
+                    <h2 class="card-title">ROI (Çalışma Alanı) Ayarı</h2>
+                </div>
+            </div>
+            <div class="card-body">
+
+                <p class="section-desc">
+                    <i class="fa-solid fa-circle-info"></i>
+                    Çalışma alanının kamera görüntüsündeki konumunu aşağıdaki kaydırıcılarla ayarlayın.
+                </p>
+
+                <!-- ROI Sliders -->
+                <div class="roi-sliders">
+
+                    <div class="slider-group">
+                        <div class="slider-label-row">
+                            <label for="roi-x1">
+                                <i class="fa-solid fa-arrows-left-right"></i> X1 (Sol)
+                            </label>
+                            <span class="slider-val" id="roi-x1-val">
+                                {{ (config.get('roi_x1', config.get('roi', {}).get('x1', 0.05)) * 100)|int }}%
+                            </span>
+                        </div>
+                        <input type="range" id="roi-x1" class="form-range"
+                               min="0" max="100" step="1"
+                               value="{{ (config.get('roi_x1', config.get('roi', {}).get('x1', 0.05)) * 100)|int }}"
+                               oninput="updateROI()">
+                    </div>
+
+                    <div class="slider-group">
+                        <div class="slider-label-row">
+                            <label for="roi-y1">
+                                <i class="fa-solid fa-arrows-up-down"></i> Y1 (Üst - Boy Ayarı)
+                            </label>
+                            <span class="slider-val" id="roi-y1-val">
+                                {{ (config.get('roi_y1', config.get('roi', {}).get('y1', 0.05)) * 100)|int }}%
+                            </span>
+                        </div>
+                        <input type="range" id="roi-y1" class="form-range"
+                               min="0" max="100" step="1"
+                               value="{{ (config.get('roi_y1', config.get('roi', {}).get('y1', 0.05)) * 100)|int }}"
+                               oninput="updateROI()">
+                    </div>
+
+                    <div class="slider-group">
+                        <div class="slider-label-row">
+                            <label for="roi-x2">
+                                <i class="fa-solid fa-arrows-left-right"></i> X2 (Sağ)
+                            </label>
+                            <span class="slider-val" id="roi-x2-val">
+                                {{ (config.get('roi_x2', config.get('roi', {}).get('x2', 0.95)) * 100)|int }}%
+                            </span>
+                        </div>
+                        <input type="range" id="roi-x2" class="form-range"
+                               min="0" max="100" step="1"
+                               value="{{ (config.get('roi_x2', config.get('roi', {}).get('x2', 0.95)) * 100)|int }}"
+                               oninput="updateROI()">
+                    </div>
+
+                    <div class="slider-group">
+                        <div class="slider-label-row">
+                            <label for="roi-y2">
+                                <i class="fa-solid fa-arrows-up-down"></i> Y2 (Alt - Boy Ayarı)
+                            </label>
+                            <span class="slider-val" id="roi-y2-val">
+                                {{ (config.get('roi_y2', config.get('roi', {}).get('y2', 1.0)) * 100)|int }}%
+                            </span>
+                        </div>
+                        <input type="range" id="roi-y2" class="form-range"
+                               min="0" max="100" step="1"
+                               value="{{ (config.get('roi_y2', config.get('roi', {}).get('y2', 1.0)) * 100)|int }}"
+                               oninput="updateROI()">
+                    </div>
+                </div>
+
+                <!-- ROI Preview Box -->
+                <div class="roi-preview-wrap">
+                    <p class="roi-preview-label">ROI Önizleme</p>
+                    <div class="roi-canvas" id="roi-canvas">
+                        <div class="roi-rect" id="roi-rect"></div>
+                    </div>
+                    <div class="roi-coords" id="roi-coords">
+                        X1:0% Y1:0% → X2:100% Y2:100%
+                    </div>
+                </div>
+
+                <button class="btn btn--primary btn--full mt-3" id="btn-save-roi">
+                    <i class="fa-solid fa-floppy-disk"></i> ROI'yi Kaydet
+                </button>
+
+            </div>
+        </div>
+        <!-- END ROI Card -->
+
+
+        <!-- Card: Detection Settings -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-header-left">
+                    <i class="fa-solid fa-sliders card-header-icon"></i>
+                    <h2 class="card-title">Tespit Ayarları</h2>
+                </div>
+            </div>
+            <div class="card-body">
+
+                <!-- Motion Threshold Slider -->
+                <div class="slider-group">
+                    <div class="slider-label-row">
+                        <label for="motion-threshold">
+                            <i class="fa-solid fa-wave-square"></i> Hareket Eşiği
+                        </label>
+                        <span class="slider-val" id="motion-threshold-val">
+                            {{ config.get('motion_threshold', 0.15) if config else '0.15' }}
+                        </span>
+                    </div>
+                    <input type="range" id="motion-threshold" class="form-range"
+                           min="0.05" max="0.50" step="0.01"
+                           value="{{ config.get('motion_threshold', 0.15) if config else '0.15' }}"
+                           oninput="document.getElementById('motion-threshold-val').textContent = parseFloat(this.value).toFixed(2)">
+                    <div class="slider-hints">
+                        <span>Hassas (0.05)</span>
+                        <span>Kaba (0.50)</span>
+                    </div>
+                </div>
+
+                <!-- Inactive Frame Limit Slider -->
+                <div class="slider-group">
+                    <div class="slider-label-row">
+                        <label for="inactive-limit">
+                            <i class="fa-solid fa-film"></i> İnaktif Kare Limiti
+                        </label>
+                        <span class="slider-val" id="inactive-limit-val">
+                            {{ config.get('inactive_frame_limit', 60) if config else '60' }}
+                        </span>
+                    </div>
+                    <input type="range" id="inactive-limit" class="form-range"
+                           min="5" max="200" step="1"
+                           value="{{ config.get('inactive_frame_limit', 60) if config else '60' }}"
+                           oninput="document.getElementById('inactive-limit-val').textContent = this.value">
+                    <div class="slider-hints">
+                        <span>Az (5)</span>
+                        <span>Çok (200)</span>
+                    </div>
+                </div>
+
+                <!-- Calibration Mode Toggle -->
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <span class="toggle-label">
+                            <i class="fa-solid fa-crosshairs"></i> Kalibrasyon Modu
+                        </span>
+                        <span class="toggle-desc">Aktifken ROI sınırları ekranda gösterilir</span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="calib-mode"
+                               {% if config and config.get('calibration_mode') %}checked{% endif %}>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <button class="btn btn--primary btn--full mt-3" id="btn-save-detection">
+                    <i class="fa-solid fa-floppy-disk"></i> Ayarları Kaydet
+                </button>
+
+            </div>
+        </div>
+        <!-- END Detection Settings Card -->
+
+        <!-- Card: Manual Camera Image Adjustments -->
+        <div class="card" style="margin-top:24px;">
+            <div class="card-header">
+                <div class="card-header-left">
+                    <i class="fa-solid fa-sliders card-header-icon" style="color:var(--accent);"></i>
+                    <h2 class="card-title">Kamera Manuel Görüntü Ayarları</h2>
+                </div>
+            </div>
+            <div class="card-body">
+                <p class="section-desc">
+                    <i class="fa-solid fa-sun"></i>
+                    Kamera ışık, kontrast, renk canlılığı ve aynalama ayarlarını canlı olarak ayarlayabilirsiniz.
+                </p>
+
+                <!-- Brightness Slider -->
+                <div class="slider-group">
+                    <div class="slider-label-row">
+                        <label for="cam-brightness">
+                            <i class="fa-solid fa-sun"></i> Parlaklık (Brightness)
+                        </label>
+                        <span class="slider-val" id="cam-brightness-val">
+                            {{ config.get('brightness', 0) if config else 0 }}
+                        </span>
+                    </div>
+                    <input type="range" id="cam-brightness" class="form-range"
+                           min="-100" max="100" step="1"
+                           value="{{ config.get('brightness', 0) if config else 0 }}"
+                           oninput="document.getElementById('cam-brightness-val').textContent = this.value">
+                    <div class="slider-hints">
+                        <span>Karanlık (-100)</span>
+                        <span>Aydınlık (+100)</span>
+                    </div>
+                </div>
+
+                <!-- Contrast Slider -->
+                <div class="slider-group">
+                    <div class="slider-label-row">
+                        <label for="cam-contrast">
+                            <i class="fa-solid fa-circle-half-stroke"></i> Kontrast (Contrast)
+                        </label>
+                        <span class="slider-val" id="cam-contrast-val">
+                            {{ ((config.get('contrast', 1.0) if config else 1.0) * 100)|int }}%
+                        </span>
+                    </div>
+                    <input type="range" id="cam-contrast" class="form-range"
+                           min="50" max="200" step="5"
+                           value="{{ ((config.get('contrast', 1.0) if config else 1.0) * 100)|int }}"
+                           oninput="document.getElementById('cam-contrast-val').textContent = this.value + '%'">
+                    <div class="slider-hints">
+                        <span>Yumuşak (50%)</span>
+                        <span>Keskin (200%)</span>
+                    </div>
+                </div>
+
+                <!-- Saturation Slider -->
+                <div class="slider-group">
+                    <div class="slider-label-row">
+                        <label for="cam-saturation">
+                            <i class="fa-solid fa-droplet"></i> Doygunluk / Renk (Saturation)
+                        </label>
+                        <span class="slider-val" id="cam-saturation-val">
+                            {{ ((config.get('saturation', 1.0) if config else 1.0) * 100)|int }}%
+                        </span>
+                    </div>
+                    <input type="range" id="cam-saturation" class="form-range"
+                           min="0" max="200" step="5"
+                           value="{{ ((config.get('saturation', 1.0) if config else 1.0) * 100)|int }}"
+                           oninput="document.getElementById('cam-saturation-val').textContent = this.value + '%'">
+                    <div class="slider-hints">
+                        <span>Siyah-Beyaz (0%)</span>
+                        <span>Canlı (200%)</span>
+                    </div>
+                </div>
+
+                <!-- Flip Horizontal Toggle -->
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <span class="toggle-label">
+                            <i class="fa-solid fa-right-left"></i> Yatay Aynalama (Ayna Modu)
+                        </span>
+                        <span class="toggle-desc">Görüntüyü sağa/sola çevirir</span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="cam-flip-h"
+                               {% if config and config.get('flip_h') %}checked{% endif %}>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <!-- Flip Vertical Toggle -->
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <span class="toggle-label">
+                            <i class="fa-solid fa-up-down"></i> Dikey Aynalama
+                        </span>
+                        <span class="toggle-desc">Görüntüyü baş aşağı çevirir</span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="cam-flip-v"
+                               {% if config and config.get('flip_v') %}checked{% endif %}>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <button class="btn btn--primary btn--full mt-3" id="btn-save-img-adj">
+                    <i class="fa-solid fa-sliders"></i> Görüntü Ayarlarını Uygula
+                </button>
+            </div>
+        </div>
+        <!-- END Manual Camera Adjustments Card -->
+
+    </div>
+    <!-- END RIGHT COLUMN -->
+
+</div>
+
+{% endblock %}
+
+
+{% block extra_scripts %}
+<script>
+// ═══════════════════════════════════════════════
+// Cameras JS
+// ═══════════════════════════════════════════════
+
+let selectedCameraId = 0;
+
+// ── Camera Selection ─────────────────────────────────────────
+function selectCamera(el, camId) {
+    document.querySelectorAll('.camera-item').forEach(i => i.classList.remove('camera-item--selected'));
+    el.classList.add('camera-item--selected');
+    if (camId === undefined || camId === null) {
+        const dataId = el.getAttribute('data-cam-id') || (el.dataset ? el.dataset.camId : null);
+        camId = dataId !== null && dataId !== undefined ? parseInt(dataId) : 0;
+    } else {
+        camId = parseInt(camId);
+    }
+    selectedCameraId = camId;
+    document.getElementById('sel-cam-id').textContent = 'Kamera ' + camId;
+}
+
+// Initialize with first camera
+const firstCam = document.querySelector('.camera-item--selected');
+if (firstCam) {
+    const dataId = firstCam.getAttribute('data-cam-id') || (firstCam.dataset ? firstCam.dataset.camId : null);
+    selectedCameraId = dataId !== null && dataId !== undefined ? parseInt(dataId) : 0;
+    document.getElementById('sel-cam-id').textContent = 'Kamera ' + selectedCameraId;
+}
+
+// ── Scan Cameras ─────────────────────────────────────────────
+document.getElementById('btn-scan').addEventListener('click', function() {
+    this.disabled = true;
+    this.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Taranıyor...';
+    fetch('/api/camera/list')
+        .then(r => r.json())
+        .then(data => {
+            const list    = document.getElementById('camera-list');
+            const cameras = data.cameras || data || [];
+            if (cameras.length > 0) {
+                list.innerHTML = cameras.map((cam, idx) => `
+                    <div class="camera-item ${idx === 0 ? 'camera-item--selected' : ''}"
+                         data-cam-id="${cam.id !== undefined ? cam.id : idx}"
+                         onclick="selectCamera(this, ${cam.id !== undefined ? cam.id : idx})">
+                        <div class="cam-item-icon"><i class="fa-solid fa-video"></i></div>
+                        <div class="cam-item-info">
+                            <span class="cam-item-name">${cam.name || 'Kamera ' + (cam.id || idx)}</span>
+                            <span class="cam-item-sub">ID: ${cam.id !== undefined ? cam.id : idx}</span>
+                        </div>
+                        <span class="cam-status-dot ${cam.active ? 'cam-dot--active' : 'cam-dot--idle'}"></span>
+                    </div>
+                `).join('');
+                showToast(`${cameras.length} kamera bulundu`, 'success');
+            } else {
+                showToast('Kamera bulunamadı', 'warning');
+            }
+        })
+        .catch(() => showToast('Tarama hatası', 'error'))
+        .finally(() => {
+            this.disabled = false;
+            this.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> Kameraları Tara';
+        });
+});
+
+// ── Start Camera ─────────────────────────────────────────────
+document.getElementById('btn-cam-start').addEventListener('click', function() {
+    this.disabled = true;
+    this.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Başlatılıyor...';
+    fetch('/api/camera/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ camera_id: selectedCameraId })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success || data.status === 'ok') {
+            showToast('Kamera başarıyla başlatıldı', 'success');
+            document.getElementById('cam-status-text').textContent = 'Kamera Aktif';
+            document.getElementById('cam-current-status').querySelector('.status-pill').className = 'status-pill status-pill--active';
+            document.getElementById('sel-cam-status').textContent = 'Aktif';
+            // Refresh preview
+            const feed = document.getElementById('preview-feed');
+            feed.src = '/api/video_feed?' + Date.now();
+            feed.style.display = 'block';
+            document.getElementById('preview-no-signal').style.display = 'none';
+        } else {
+            showToast(data.message || 'Kamera başlatılamadı', 'error');
+        }
+    })
+    .catch(() => showToast('Sunucu bağlantı hatası', 'error'))
+    .finally(() => {
+        this.disabled = false;
+        this.innerHTML = '<i class="fa-solid fa-play"></i> Kamerayı Başlat';
+    });
+});
+
+// ── Stop Camera ──────────────────────────────────────────────
+document.getElementById('btn-cam-stop').addEventListener('click', function() {
+    this.disabled = true;
+    this.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Durduruluyor...';
+    fetch('/api/camera/stop', { method: 'POST' })
+    .then(r => r.json())
+    .then(() => {
+        showToast('Kamera durduruldu', 'info');
+        document.getElementById('cam-status-text').textContent = 'Kamera Pasif';
+        document.getElementById('cam-current-status').querySelector('.status-pill').className = 'status-pill status-pill--idle';
+        document.getElementById('sel-cam-status').textContent = 'Pasif';
+        const feed = document.getElementById('preview-feed');
+        feed.style.display = 'none';
+        document.getElementById('preview-no-signal').style.display = 'flex';
+    })
+    .catch(() => showToast('Sunucu bağlantı hatası', 'error'))
+    .finally(() => {
+        this.disabled = false;
+        this.innerHTML = '<i class="fa-solid fa-stop"></i> Kamerayı Durdur';
+    });
+});
+
+// ── ROI Update (live sliders) ─────────────────────────────────
+function updateROI() {
+    const x1 = parseInt(document.getElementById('roi-x1').value);
+    const y1 = parseInt(document.getElementById('roi-y1').value);
+    const x2 = parseInt(document.getElementById('roi-x2').value);
+    const y2 = parseInt(document.getElementById('roi-y2').value);
+
+    document.getElementById('roi-x1-val').textContent = x1 + '%';
+    document.getElementById('roi-y1-val').textContent = y1 + '%';
+    document.getElementById('roi-x2-val').textContent = x2 + '%';
+    document.getElementById('roi-y2-val').textContent = y2 + '%';
+
+    // Küçük ROI önizleme kutusu (sağ sütun)
+    const rect = document.getElementById('roi-rect');
+    rect.style.left   = Math.min(x1, x2) + '%';
+    rect.style.top    = Math.min(y1, y2) + '%';
+    rect.style.width  = Math.abs(x2 - x1) + '%';
+    rect.style.height = Math.abs(y2 - y1) + '%';
+
+    document.getElementById('roi-coords').textContent =
+        `X1:${x1}% Y1:${y1}% → X2:${x2}% Y2:${y2}%`;
+
+    // ── Canlı Önizleme Overlay'i Güncelle ───────────────────────
+    const lx1 = Math.min(x1, x2), ly1 = Math.min(y1, y2);
+    const lx2 = Math.max(x1, x2), ly2 = Math.max(y1, y2);
+
+    // Üst karartma
+    const shTop = document.getElementById('roi-shade-top');
+    if (shTop) { shTop.style.height = ly1 + '%'; }
+
+    // Alt karartma
+    const shBot = document.getElementById('roi-shade-bottom');
+    if (shBot) { shBot.style.height = (100 - ly2) + '%'; }
+
+    // Sol karartma
+    const shLft = document.getElementById('roi-shade-left');
+    if (shLft) {
+        shLft.style.top    = ly1 + '%';
+        shLft.style.height = (ly2 - ly1) + '%';
+        shLft.style.left   = '0';
+        shLft.style.width  = lx1 + '%';
+    }
+
+    // Sağ karartma
+    const shRgt = document.getElementById('roi-shade-right');
+    if (shRgt) {
+        shRgt.style.top    = ly1 + '%';
+        shRgt.style.height = (ly2 - ly1) + '%';
+        shRgt.style.right  = '0';
+        shRgt.style.left   = 'auto';
+        shRgt.style.width  = (100 - lx2) + '%';
+    }
+
+    // ROI çerçeve kenarlığı
+    const border = document.getElementById('roi-border-box');
+    if (border) {
+        border.style.left   = lx1 + '%';
+        border.style.top    = ly1 + '%';
+        border.style.width  = (lx2 - lx1) + '%';
+        border.style.height = (ly2 - ly1) + '%';
+    }
+
+    // ROI etiketi
+    const label = document.getElementById('roi-label-overlay');
+    if (label) {
+        label.style.left = lx1 + '%';
+        label.style.top  = ly1 + '%';
+        label.textContent = `ROI: X1=${lx1}% Y1=${ly1}% → X2=${lx2}% Y2=${ly2}%`;
+    }
+}
+updateROI();
+
+// ── Save ROI ──────────────────────────────────────────────────
+document.getElementById('btn-save-roi').addEventListener('click', function() {
+    const x1 = parseInt(document.getElementById('roi-x1').value) / 100;
+    const y1 = parseInt(document.getElementById('roi-y1').value) / 100;
+    const x2 = parseInt(document.getElementById('roi-x2').value) / 100;
+    const y2 = parseInt(document.getElementById('roi-y2').value) / 100;
+
+    this.disabled = true;
+    this.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Kaydediliyor...';
+
+    fetch('/api/settings/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roi_x1: x1, roi_y1: y1, roi_x2: x2, roi_y2: y2 })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success || data.status === 'ok') {
+            showToast('ROI ayarları kaydedildi', 'success');
+        } else {
+            showToast(data.message || 'Kayıt hatası', 'error');
+        }
+    })
+    .catch(() => showToast('Sunucu bağlantı hatası', 'error'))
+    .finally(() => {
+        this.disabled = false;
+        this.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> ROI\'yi Kaydet';
+    });
+});
+
+// ── Save Detection Settings ───────────────────────────────────
+document.getElementById('btn-save-detection').addEventListener('click', function() {
+    const threshold    = parseFloat(document.getElementById('motion-threshold').value);
+    const frameLimit   = parseInt(document.getElementById('inactive-limit').value);
+    const calibMode    = document.getElementById('calib-mode').checked;
+
+    this.disabled = true;
+    this.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Kaydediliyor...';
+
+    fetch('/api/settings/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            motion_threshold: threshold,
+            inactive_frame_limit: frameLimit,
+            calibration_mode: calibMode
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success || data.status === 'ok') {
+            showToast('Tespit ayarları kaydedildi', 'success');
+        } else {
+            showToast(data.message || 'Kayıt hatası', 'error');
+        }
+    })
+    .catch(() => showToast('Sunucu bağlantı hatası', 'error'))
+    .finally(() => {
+        this.disabled = false;
+        this.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Ayarları Kaydet';
+    });
+});
+
+// ── Save Image Adjustment Settings ────────────────────────────
+document.getElementById('btn-save-img-adj').addEventListener('click', function() {
+    const brightness = parseInt(document.getElementById('cam-brightness').value);
+    const contrast   = parseFloat(document.getElementById('cam-contrast').value) / 100.0;
+    const saturation = parseFloat(document.getElementById('cam-saturation').value) / 100.0;
+    const flipH      = document.getElementById('cam-flip-h').checked;
+    const flipV      = document.getElementById('cam-flip-v').checked;
+
+    this.disabled = true;
+    this.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uygulanıyor...';
+
+    fetch('/api/settings/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            brightness: brightness,
+            contrast: contrast,
+            saturation: saturation,
+            flip_h: flipH,
+            flip_v: flipV
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success || data.status === 'ok') {
+            showToast('Kamera görüntü ayarları canlı olarak uygulandı', 'success');
+        } else {
+            showToast(data.message || 'Ayar hatası', 'error');
+        }
+    })
+    .catch(() => showToast('Sunucu bağlantı hatası', 'error'))
+    .finally(() => {
+        this.disabled = false;
+        this.innerHTML = '<i class="fa-solid fa-sliders"></i> Görüntü Ayarlarını Uygula';
+    });
+});
+
+// ── Live FPS and Clock Display Update ──────────────────────────
+function updateLiveStats(fps, statusText) {
+    const fpsElem = document.getElementById('preview-fps-text');
+    if (fpsElem && fps !== undefined && fps !== null) {
+        fpsElem.innerHTML = `<i class="fa-solid fa-film"></i> ${parseFloat(fps).toFixed(1)} FPS`;
+    }
+    const timeElem = document.getElementById('preview-time-text');
+    if (timeElem) {
+        const now = new Date();
+        timeElem.innerHTML = `<i class="fa-regular fa-clock"></i> ${now.toLocaleTimeString('tr-TR', {hour:'2-digit',minute:'2-digit',second:'2-digit'})}`;
+    }
+}
+
+// Socket.IO canlı güncelleme
+if (window._socket) {
+    window._socket.on('status_update', function(data) {
+        if (data) {
+            updateLiveStats(data.fps, data.durum);
+        }
+    });
+}
+
+// 1 saniyelik otomatik yedek güncelleme (Saat ve FPS)
+setInterval(function() {
+    updateLiveStats();
+    fetch('/api/camera/status')
+        .then(r => r.json())
+        .then(data => {
+            if (data && data.fps !== undefined) {
+                const fpsElem = document.getElementById('preview-fps-text');
+                if (fpsElem) {
+                    fpsElem.innerHTML = `<i class="fa-solid fa-film"></i> ${parseFloat(data.fps).toFixed(1)} FPS`;
+                }
+            }
+        })
+        .catch(() => {});
+}, 1000);
+</script>
+{% endblock %}

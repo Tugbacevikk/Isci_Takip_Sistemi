@@ -1,0 +1,20 @@
+services:
+  is-takip:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: is_takip_app
+    ports:
+      - "5000:5000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./isci_takip.db:/app/isci_takip.db
+      - ./web:/app/web
+      - ./core:/app/core
+      - ./config.yaml:/app/config.yaml
+      - ./.env:/app/.env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONUTF8=1
+    restart: unless-stopped

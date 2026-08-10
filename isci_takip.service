@@ -1,0 +1,17 @@
+[Unit]
+Description=Isci Takip Sistemi Web & AI Servisi
+After=network.target sound.target
+
+[Service]
+Type=simple
+User=ucge
+WorkingDirectory=/home/ucge/istakip/istakip
+ExecStart=/bin/bash /home/ucge/istakip/istakip/start.sh
+Restart=always
+RestartSec=5s
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONUTF8=1
+Environment=OMP_NUM_THREADS=4
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,27 @@
+# Git Ignore Dosyası
+
+# Hassas şifreler ve ortam değişkenleri
+.env
+*.env
+
+# SQLite Veritabanı
+*.db
+*.db-wal
+*.db-shm
+
+# Python ve Önbellekler
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.env/
+
+# Log Dosyaları
+logs/
+*.log
+
+# IDE & Editör
+.vscode/
+.idea/
+*.swp

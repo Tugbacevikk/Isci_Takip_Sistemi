@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>İş
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Giriş Yap - İş Takip Sistemi</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            display: flex;
+            align-items: stretch;
+        }
+
+        /* ── Sol Panel (Kırmızı) ─────────────────────────────── */
+        .left-panel {
+            flex: 1;
+            background: linear-gradient(145deg, #C0001A 0%, #E30613 40%, #c0001a 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 40px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .left-panel::before {
+            content: '';
+            position: absolute;
+            width: 400px; height: 400px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.05);
+            top: -80px; right: -80px;
+        }
+        .left-panel::after {
+            content: '';
+            position: absolute;
+            width: 300px; height: 300px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.05);
+            bottom: -60px; left: -60px;
+        }
+
+        .left-content {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            color: #fff;
+        }
+
+        .left-logo {
+            width: 200px;
+            max-width: 80%;
+            filter: brightness(0) invert(1);
+            margin-bottom: 48px;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .left-title {
+            font-size: 32px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            margin-bottom: 12px;
+            line-height: 1.2;
+        }
+
+        .left-sub {
+            font-size: 15px;
+            color: rgba(255,255,255,0.75);
+            font-weight: 400;
+            max-width: 320px;
+            line-height: 1.6;
+        }
+
+        .left-features {
+            margin-top: 48px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            text-align: left;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            color: rgba(255,255,255,0.88);
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .feature-icon {
+            width: 36px; height: 36px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 15px;
+            flex-shrink: 0;
+        }
+
+        /* ── Sağ Panel (Beyaz / Form) ─────────────────────────── */
+        .right-panel {
+            width: 480px;
+            background: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 48px;
+            box-shadow: -10px 0 40px rgba(0,0,0,0.08);
+        }
+
+        .form-logo {
+            width: 140px;
+            margin-bottom: 32px;
+        }
+
+        .form-heading {
+            font-size: 26px;
+            font-weight: 800;
+            color: #111;
+            margin-bottom: 6px;
+            letter-spacing: -0.5px;
+        }
+
+        .form-subheading {
+            font-size: 14px;
+            color: #888;
+            margin-bottom: 36px;
+        }
+
+        .login-form { width: 100%; }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 700;
+            color: #444;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            margin-bottom: 8px;
+        }
+
+        .input-wrap {
+            position: relative;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #aaa;
+            font-size: 14px;
+            pointer-events: none;
+            transition: color 0.2s;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 13px 14px 13px 40px;
+            background: #f8f8f8;
+            border: 1.5px solid #e8e8e8;
+            border-radius: 10px;
+            font-size: 14px;
+            color: #111;
+            outline: none;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .form-input:focus {
+            border-color: #E30613;
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(227,6,19,0.08);
+        }
+
+        .form-input:focus + .input-icon,
+        .input-wrap:focus-within .input-icon {
+            color: #E30613;
+        }
+
+        .pwd-toggle {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #aaa;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 4px;
+            transition: color 0.2s;
+        }
+        .pwd-toggle:hover { color: #E30613; }
+
+        .btn-login {
+            width: 100%;
+            padding: 14px;
+            background: #E30613;
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-family: inherit;
+            margin-top: 8px;
+            letter-spacing: 0.2px;
+        }
+
+        .btn-login:hover {
+            background: #C0001A;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(227,6,19,0.35);
+        }
+        .btn-login:active { transform: translateY(0); }
+
+        .error-box {
+            background: #FEF2F2;
+            border: 1.5px solid #FECACA;
+            border-radius: 10px;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #DC2626;
+            font-size: 13px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        .error-box--info { background:#EFF6FF; border-color:#BFDBFE; color:#1D4ED8; }
+        .error-box--warning { background:#FEFCE8; border-color:#FEF08A; color:#A16207; }
+        .error-box--success { background:#F0FDF4; border-color:#BBF7D0; color:#15803D; }
+
+        .form-footer {
+            margin-top: 32px;
+            text-align: center;
+            font-size: 12px;
+            color: #bbb;
+        }
+
+        .form-footer span { color: #E30613; font-weight: 600; }
+
+        /* Responsive */
+        @media (max-width: 860px) {
+            .left-panel { display: none; }
+            .right-panel { width: 100%; padding: 40px 28px; }
+        }
+
+        /* Subtle animation */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .right-panel { animation: fadeUp 0.5s ease-out; }
+    </style>
+</head>
+<body>
+
+<!-- Sol Kırmızı Panel -->
+<div class="left-panel">
+    <div class="left-content">
+        <img src="/static/logo.png" alt="Logo" class="left-logo">
+
+        <h1 class="left-title">İş Takip<br>Sistemi</h1>
+        <p class="left-sub">Üretim sahaları ve fabrikalar için anlık personel takibi, devam kontrolü ve verimlilik analiz platformu.</p>
+
+        <div class="left-features">
+            <div class="feature-item">
+                <div class="feature-icon"><i class="fa-solid fa-user-check"></i></div>
+                <span>Gerçek zamanlı yüz tanıma</span>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon"><i class="fa-solid fa-chart-line"></i></div>
+                <span>Anlık mesai & verim raporları</span>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                <span>Güvenli yerel altyapı</span>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon"><i class="fa-solid fa-bell"></i></div>
+                <span>Otomatik alarm sistemi</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sağ Beyaz Panel / Form -->
+<div class="right-panel">
+    <div style="background:#E30613; border-radius:12px; padding:8px 20px; display:inline-block; margin-bottom:32px;">
+        <img src="/static/logo.png" alt="Logo" style="height:36px; width:auto; display:block; filter:brightness(0) invert(1);">
+    </div>
+
+    <h2 class="form-heading">Yönetici Girişi</h2>
+    <p class="form-subheading">Sisteme erişmek için bilgilerinizi girin</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="error-box error-box--{{ category }}">
+                <i class="fa-solid {% if category == 'info' %}fa-circle-info{% elif category == 'warning' %}fa-triangle-exclamation{% elif category == 'success' %}fa-circle-check{% else %}fa-circle-exclamation{% endif %}"></i>
+                <span>{{ message }}</span>
+            </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if error %}
+    <div class="error-box">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        <span>{{ error }}</span>
+    </div>
+    {% endif %}
+
+    <form class="login-form" action="/login" method="POST">
+        <div class="input-group">
+            <label class="input-label" for="username">Kullanıcı Adı</label>
+            <div class="input-wrap">
+                <input type="text" class="form-input" id="username" name="username"
+                       placeholder="Kullanıcı adınızı girin" required autofocus>
+                <i class="fa-solid fa-user input-icon"></i>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label class="input-label" for="password">Şifre</label>
+            <div class="input-wrap">
+                <input type="password" class="form-input" id="password" name="password"
+                       placeholder="••••••••" required>
+                <i class="fa-solid fa-lock input-icon"></i>
+                <button type="button" class="pwd-toggle" id="toggle-pwd" title="Şifreyi Göster/Gizle">
+                    <i class="fa-solid fa-eye" id="pwd-icon"></i>
+                </button>
+            </div>
+        </div>
+
+        <button type="submit" class="btn-login">
+            <i class="fa-solid fa-right-to-bracket"></i>
+            Giriş Yap
+        </button>
+    </form>
+
+    <div class="form-footer">
+        <i class="fa-solid fa-lock" style="margin-right:4px;"></i>
+        Güvenli bağlantı &nbsp;•&nbsp; <span>v2.0</span> &nbsp;•&nbsp; Yerel Sistem
+    </div>
+</div>
+
+<script>
+document.getElementById('toggle-pwd').addEventListener('click', function() {
+    const inp = document.getElementById('password');
+    const ico = document.getElementById('pwd-icon');
+    if (inp.type === 'password') {
+        inp.type = 'text';
+        ico.className = 'fa-solid fa-eye-slash';
+    } else {
+        inp.type = 'password';
+        ico.className = 'fa-solid fa-eye';
+    }
+});
+</script>
+
+</body>
+</html>

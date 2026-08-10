@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>{% block title %}İş Takip{% endblock %} - İş Takip Sistemi</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/style.css?v=1.1">
+
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<div class="layout">
+
+    <!-- ===================== SIDEBAR ===================== -->
+    <aside class="sidebar" id="sidebar">
+
+        <!-- Logo -->
+        <div class="sidebar-logo" style="padding: 16px 20px; display:flex; align-items:center; justify-content:flex-start; border-bottom: 1px solid var(--border-color);">
+            <div style="background:#E30613; border-radius:8px; padding:7px 14px; display:inline-flex; align-items:center; width:100%;">
+                <img src="/static/logo.png" alt="Logo" style="height:30px; width:auto; max-width:100%; display:block; filter:brightness(0) invert(1);">
+            </div>
+        </div>
+
+
+        <div class="sidebar-divider"></div>
+
+        <!-- Navigation -->
+        <nav class="sidebar-nav">
+            <span class="nav-section-label">ANA MENÜ</span>
+
+            <a href="/" class="nav-item {% if request.path == '/' %}active{% endif %}">
+                <span class="nav-icon"><i class="fa-solid fa-gauge-high"></i></span>
+                <span class="nav-label">Dashboard</span>
+                <span class="nav-indicator"></span>
+            </a>
+
+            <a href="/live-cameras" class="nav-item {% if request.path == '/live-cameras' or request.path == '/live_cameras' %}active{% endif %}">
+                <span class="nav-icon" style="position:relative;"><i class="fa-solid fa-satellite-dish"></i><span style="position:absolute; top:-2px; right:-2px; width:7px; height:7px; background:#EF4444; border-radius:50%; animation:pulse 1.5s infinite;"></span></span>
+                <span class="nav-label">Canlı Kameralar</span>
+                <span class="nav-indicator"></span>
+            </a>
+
+            <a href="/cameras" class="nav-item {% if request.path == '/cameras' %}active{% endif %}">
+                <span class="nav-icon"><i class="fa-solid fa-video"></i></span>
+                <span class="nav-label">Kameralar</span>
+                <span class="nav-indicator"></span>
+            </a>
+
+            <a href="/workers" class="nav-item {% if request.path == '/workers' %}active{% endif %}">
+                <span class="nav-icon"><i class="fa-solid fa-users"></i></span>
+                <span class="nav-label">Çalışanlar</span>
+                <span class="nav-indicator"></span>
+            </a>
+
+            <a href="/reports" class="nav-item {% if request.path == '/reports' %}active{% endif %}">
+                <span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span>
+                <span class="nav-label">Raporlar</span>
+                <span class="nav-indicator"></span>
+            </a>
+
+            <div class="sidebar-divider"></div>
+            <span class="nav-section-label">SİSTEM</span>
+
+            <a href="/settings" class="nav-item {% if request.path == '/settings' %}active{% endif %}">
+                <span class="nav-icon"><i class="fa-solid fa-gear"></i></span>
+                <span class="nav-label">Ayarlar</span>
+                <span class="nav-indicator"></span>
+            </a>
+        </nav>
+
+        <!-- Sidebar Bottom -->
+        <div class="sidebar-footer">
+            <div class="sidebar-footer-info">
+                <i class="fa-solid fa-shield-halved" style="color:var(--accent);"></i>
+                <span>Güvenli Bağlantı</span>
+            </div>
+        </div>
+
+
+    </aside>
+    <!-- ===================== END SIDEBAR ===================== -->
+
+    <!-- ===================== PAGE WRAPPER ===================== -->
+    <div class="page-wrapper">
+
+        <!-- HEADER -->
+        <header class="header">
+            <div class="header-left">
+                <button class="sidebar-toggle" id="sidebar-toggle" title="Menüyü Aç/Kapat">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <div class="page-title-wrap">
+                    <h1 class="page-title">{% block page_title %}{% endblock %}</h1>
+                    <span class="breadcrumb-sep"><i class="fa-solid fa-chevron-right"></i></span>
+                    <span class="breadcrumb-current">{% block page_title_sub %}{% endblock %}</span>
+                </div>
+            </div>
+
+            <div class="header-right">
+                <!-- System Status Badge -->
+                <div class="system-status-badge" id="system-status-badge" title="Sistem Durumu">
+                    <span class="status-dot pulsing" id="sys-status-dot"></span>
+                    <span id="sys-status-text">Sistem Hazır</span>
+                </div>
+
+                <!-- Current Time -->
+                <div class="header-time">
+                    <i class="fa-regular fa-clock"></i>
+                    <span id="current-time">--:--:--</span>
+                </div>
+
+                <!-- User Profile & Logout -->
+                {% if current_user %}
+                <div class="user-profile-badge">
+                    <i class="fa-solid fa-user-shield user-icon"></i>
+                    <span class="user-name">{{ current_user.ad_soyad or current_user.kullanici_adi }}</span>
+                    <span class="user-role-tag {{ 'admin' if current_user.rol == 'admin' else 'op' }}">
+                        {{ current_user.rol|upper }}
+                    </span>
+                    <a href="/logout" class="user-logout-btn" title="Güvenli Çıkış Yap">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </a>
+                </div>
+                {% else %}
+                <a href="/login" class="header-login-btn">
+                    <i class="fa-solid fa-right-to-bracket"></i>
+                    <span>Yönetici Girişi</span>
+                </a>
+                {% endif %}
+            </div>
+        </header>
+        <!-- END HEADER -->
+
+        <!-- MAIN CONTENT -->
+        <main class="main">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="flash flash-{{ category }}">
+                                <i class="fa-solid {% if category == 'success' %}fa-circle-check{% elif category == 'error' or category == 'danger' %}fa-circle-xmark{% else %}fa-circle-info{% endif %}"></i>
+                                <span>{{ message }}</span>
+                                <button class="flash-close" onclick="this.parentElement.remove()"><i class="fa-solid fa-xmark"></i></button>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </main>
+        <!-- END MAIN CONTENT -->
+
+    </div>
+    <!-- ===================== END PAGE WRAPPER ===================== -->
+
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- ===================== SCRIPTS ===================== -->
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="/static/js/main.js"></script>
+<script src="/static/js/charts.js"></script>
+
+<script>
+// ── Base JS: runs on every page ──────────────────────────────────────────────
+
+// Clock
+function updateClock() {
+    const now = new Date();
+    document.getElementById('current-time').textContent =
+        now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+// Theme Toggle
+const themeToggle = document.getElementById('theme-toggle');
+const themeIcon   = document.getElementById('theme-icon');
+const html        = document.documentElement;
+
+function applyTheme(theme) {
+    html.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+    if (theme === 'dark') {
+        themeIcon.className = 'fa-solid fa-moon';
+    } else {
+        themeIcon.className = 'fa-solid fa-sun';
+    }
+}
+
+// Load saved theme
+const savedTheme = localStorage.getItem('theme') || '{{ session.get("theme", "dark") }}';
+applyTheme(savedTheme);
+
+themeToggle.addEventListener('click', () => {
+    const current = html.getAttribute('data-theme');
+    applyTheme(current === 'dark' ? 'light' : 'dark');
+    // Optionally persist to server
+    fetch('/api/settings/theme', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ theme: html.getAttribute('data-theme') })
+    }).catch(() => {});
+});
+
+// Sidebar Toggle
+const sidebarToggle = document.getElementById('sidebar-toggle');
+const sidebar = document.getElementById('sidebar');
+sidebarToggle && sidebarToggle.addEventListener('click', () => {
+    sidebar.classList.toggle('collapsed');
+    document.querySelector('.page-wrapper').classList.toggle('sidebar-collapsed');
+});
+
+// Notification dropdown toggle
+const notifBtn      = document.getElementById('notif-btn');
+const notifDropdown = document.getElementById('notif-dropdown');
+notifBtn && notifBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isVisible = notifDropdown.style.display !== 'none';
+    notifDropdown.style.display = isVisible ? 'none' : 'block';
+});
+document.addEventListener('click', () => {
+    if (notifDropdown) notifDropdown.style.display = 'none';
+});
+
+// Mark all notifications as read
+const notifMarkAll = document.getElementById('notif-mark-all');
+notifMarkAll && notifMarkAll.addEventListener('click', () => {
+    fetch('/api/alarms/mark_read', { method: 'POST' })
+        .then(() => {
+            document.getElementById('notif-badge').style.display = 'none';
+            const badge = document.getElementById('alarm-count-badge');
+            if (badge) badge.style.display = 'none';
+            document.getElementById('notif-list').innerHTML =
+                '<div class="notif-empty"><i class="fa-solid fa-bell-slash"></i><p>Bildirim yok</p></div>';
+        }).catch(console.error);
+});
+
+// Socket.IO Connection
+let socket;
+try {
+    socket = io({ 
+        transports: ['polling', 'websocket'],
+        reconnection: true,
+        reconnectionDelay: 500,
+        reconnectionAttempts: Infinity
+    });
+
+    socket.on('connect', () => {
+        const connDot   = document.getElementById('conn-dot');
+        const connLabel = document.getElementById('conn-label');
+        const sysDot    = document.getElementById('sys-status-dot');
+        const sysText   = document.getElementById('sys-status-text');
+
+        if (connDot) connDot.className = 'conn-dot connected';
+        if (connLabel) connLabel.textContent = 'Bağlı';
+        if (sysDot) sysDot.className = 'status-dot pulsing';
+        if (sysText) sysText.textContent = 'Sistem Aktif';
+    });
+
+    socket.on('disconnect', () => {
+        const connDot   = document.getElementById('conn-dot');
+        const connLabel = document.getElementById('conn-label');
+        const sysDot    = document.getElementById('sys-status-dot');
+        const sysText   = document.getElementById('sys-status-text');
+
+        if (connDot) connDot.className = 'conn-dot disconnected';
+        if (connLabel) connLabel.textContent = 'Bağlantı Kesildi';
+        if (sysDot) sysDot.className = 'status-dot error';
+        if (sysText) sysText.textContent = 'Bağlantı Yok';
+    });
+
+    socket.on('connect_error', () => {
+        const connDot   = document.getElementById('conn-dot');
+        const connLabel = document.getElementById('conn-label');
+        if (connDot) connDot.className = 'conn-dot error';
+        if (connLabel) connLabel.textContent = 'Hata';
+    });
+
+    // Global alarm badge update via socket
+    socket.on('alarm_update', (data) => {
+        const count = data.unread_count || 0;
+        const badge    = document.getElementById('alarm-count-badge');
+        const notifBdg = document.getElementById('notif-badge');
+        if (badge) {
+            badge.style.display = count > 0 ? 'inline-flex' : 'none';
+            badge.textContent   = count > 9 ? '9+' : count;
+        }
+        if (notifBdg) {
+            notifBdg.style.display = count > 0 ? 'flex' : 'none';
+            notifBdg.textContent   = count > 9 ? '9+' : count;
+        }
+    });
+
+    window._socket = socket;
+} catch(e) {
+    console.warn('Socket.IO başlatılamadı:', e);
+}
+
+// Fetch unread alarm count on page load
+fetch('/api/alarms/unread_count')
+    .then(r => r.json())
+    .then(data => {
+        const count = data.count || data.unread_count || 0;
+        const badge    = document.getElementById('alarm-count-badge');
+        const notifBdg = document.getElementById('notif-badge');
+        if (count > 0) {
+            if (badge) { badge.style.display = 'inline-flex'; badge.textContent = count > 9 ? '9+' : count; }
+            if (notifBdg) { notifBdg.style.display = 'flex'; notifBdg.textContent = count > 9 ? '9+' : count; }
+        }
+    }).catch(() => {});
+
+// Global Toast Function
+window.showToast = function(message, type = 'info', duration = 4000) {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    const icons = { success: 'fa-circle-check', error: 'fa-circle-xmark', warning: 'fa-triangle-exclamation', info: 'fa-circle-info' };
+    toast.innerHTML = `
+        <i class="fa-solid ${icons[type] || icons.info}"></i>
+        <span>${message}</span>
+        <button onclick="this.parentElement.remove()"><i class="fa-solid fa-xmark"></i></button>
+    `;
+    container.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('show'));
+    setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 400); }, duration);
+};
+</script>
+
+{% block extra_scripts %}{% endblock %}
+
+</body>
+</html>

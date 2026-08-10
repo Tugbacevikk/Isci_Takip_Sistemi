@@ -1,0 +1,351 @@
+{% extends 'base.html' %}
+
+{% block title %}Çalışan Detaylı Analiz & Performans Raporu{% endblock %}
+{% block page_title %}Çalışan Analiz & Performans Raporu{% endblock %}
+{% block page_title_sub %}Detaylı Aktivite, Kaynak Süreleri ve Saatlik Analizler{% endblock %}
+
+{% block content %}
+
+<!-- ── ÜST GEZİNTİ VE FİLTRE BAR ─────────────────────────────────────── -->
+<div class="card mb-4" style="border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+    <div class="card-body" style="padding:16px 24px;">
+        <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:16px;">
+            <div style="display:flex; align-items:center; gap:14px;">
+                <a href="/reports" class="btn btn-secondary" style="display:inline-flex; align-items:center; gap:8px; font-weight:600;">
+                    <i class="fa-solid fa-arrow-left"></i> Raporlara Dön
+                </a>
+                <div style="height:24px; width:1px; background:var(--border-color);"></div>
+                    <div>
+                        <h2 id="wdp-worker-name" style="margin:0; font-size:20px; font-weight:700; color:var(--text-primary);">Çalışan Yükleniyor...</h2>
+                        <div style="display:flex; gap:16px; font-size:13px; color:var(--text-secondary); margin-top:2px;">
+                            <span id="wdp-station"><i class="fa-solid fa-industry" style="color:var(--accent);"></i> İstasyon: —</span>
+                            <span id="wdp-sicil"><i class="fa-solid fa-id-card"></i> Sicil: —</span>
+                            <span id="wdp-dept"><i class="fa-solid fa-building"></i> Departman: —</span>
+                        </div>
+                    </div>
+            </div>
+
+            <!-- Filtreleme Alanı -->
+            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:12px;">
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <label style="font-size:12px; font-weight:600; color:var(--text-secondary);"><i class="fa-regular fa-calendar"></i> Başlangıç:</label>
+                    <input type="date" id="wdp-filter-start" class="form-input form-input--sm" style="width:140px;">
+                </div>
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <label style="font-size:12px; font-weight:600; color:var(--text-secondary);"><i class="fa-regular fa-calendar"></i> Bitiş:</label>
+                    <input type="date" id="wdp-filter-end" class="form-input form-input--sm" style="width:140px;">
+                </div>
+                <button class="btn btn-primary" id="wdp-btn-refresh" style="padding:6px 14px; font-size:13px;">
+                    <i class="fa-solid fa-rotate"></i> Yenile
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── 5 KPI İSTATİSTİK KARTLARI ──────────────────────────────────────── -->
+<div class="kpi-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap:16px; margin-bottom:24px;">
+    <!-- 1. Aktif Çalışma -->
+    <div class="kpi-card" style="padding:16px; border-radius:12px; background:var(--card-bg); border:1px solid var(--border-color);">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <div class="kpi-icon green" style="width:44px; height:44px; border-radius:10px; font-size:18px; display:flex; align-items:center; justify-content:center; background:rgba(16, 185, 129, 0.12); color:#10B981;">
+                <i class="fa-solid fa-briefcase"></i>
+            </div>
+            <div>
+                <span style="font-size:12px; color:var(--text-secondary); display:block; font-weight:500;">Aktif Çalışma Süresi</span>
+                <span id="wdp-kpi-active" style="color:var(--green); font-size:18px; font-weight:700;">—</span>
+                <span id="wdp-kpi-active-pct" style="font-size:11px; color:var(--text-secondary); display:block;">%0 Oran</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Kaynak Süresi -->
+    <div class="kpi-card" style="padding:16px; border-radius:12px; background:var(--card-bg); border:1px solid var(--border-color);">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <div class="kpi-icon cyan" style="width:44px; height:44px; border-radius:10px; font-size:18px; display:flex; align-items:center; justify-content:center; background:rgba(6, 182, 212, 0.12); color:#06B6D4;">
+                <i class="fa-solid fa-fire-flame-curved"></i>
+            </div>
+            <div>
+                <span style="font-size:12px; color:var(--text-secondary); display:block; font-weight:500;">Kaynak Yapma Süresi</span>
+                <span id="wdp-kpi-welding" style="color:#06B6D4; font-size:18px; font-weight:700;">—</span>
+                <span id="wdp-kpi-welding-pct" style="font-size:11px; color:var(--text-secondary); display:block;">%0 Oran</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Hareketsiz Süre -->
+    <div class="kpi-card" style="padding:16px; border-radius:12px; background:var(--card-bg); border:1px solid var(--border-color);">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <div class="kpi-icon red" style="width:44px; height:44px; border-radius:10px; font-size:18px; display:flex; align-items:center; justify-content:center; background:rgba(239, 68, 68, 0.12); color:#EF4444;">
+                <i class="fa-solid fa-user-slash"></i>
+            </div>
+            <div>
+                <span style="font-size:12px; color:var(--text-secondary); display:block; font-weight:500;">Hareketsiz Süre</span>
+                <span id="wdp-kpi-inactive" style="color:var(--red); font-size:18px; font-weight:700;">—</span>
+                <span id="wdp-kpi-inactive-pct" style="font-size:11px; color:var(--text-secondary); display:block;">%0 Oran</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. Telefon Kullanımı -->
+    <div class="kpi-card" style="padding:16px; border-radius:12px; background:var(--card-bg); border:1px solid var(--border-color);">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <div class="kpi-icon orange" style="width:44px; height:44px; border-radius:10px; font-size:18px; display:flex; align-items:center; justify-content:center; background:rgba(245, 158, 11, 0.12); color:#F59E0B;">
+                <i class="fa-solid fa-mobile-screen-button"></i>
+            </div>
+            <div>
+                <span style="font-size:12px; color:var(--text-secondary); display:block; font-weight:500;">Telefon Süresi</span>
+                <span id="wdp-kpi-phone" style="color:var(--orange); font-size:18px; font-weight:700;">—</span>
+                <span id="wdp-kpi-phone-cnt" style="font-size:11px; color:var(--text-secondary); display:block;">0 İhlal</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. Genel Verimlilik Oranı -->
+    <div class="kpi-card" style="padding:16px; border-radius:12px; background:var(--card-bg); border:1px solid var(--border-color);">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <div class="kpi-icon blue" style="width:44px; height:44px; border-radius:10px; font-size:18px; display:flex; align-items:center; justify-content:center; background:rgba(59, 130, 246, 0.12); color:#3B82F6;">
+                <i class="fa-solid fa-gauge-high"></i>
+            </div>
+            <div>
+                <span style="font-size:12px; color:var(--text-secondary); display:block; font-weight:500;">Verimlilik Oranı</span>
+                <span id="wdp-kpi-score" style="color:var(--accent); font-size:18px; font-weight:700;">%—</span>
+                <span style="font-size:11px; color:var(--text-secondary); display:block;">Vardiya Başarısı</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── DETAYLI GRAFİK ALANLARI ───────────────────────────────────────── -->
+<div style="display:grid; grid-template-columns: 1fr 2fr; gap:20px; margin-bottom:24px;">
+    
+    <!-- Sol: Zaman Dağılım Halka Grafiği -->
+    <div class="card" style="border-radius:12px;">
+        <div class="card-header" style="padding:14px 20px; border-bottom:1px solid var(--border-color);">
+            <h3 class="card-title" style="font-size:15px; font-weight:700; margin:0;">
+                <i class="fa-solid fa-chart-pie" style="color:var(--accent); margin-right:8px;"></i>Zaman Dağılımı
+            </h3>
+        </div>
+        <div class="card-body" style="padding:20px; height:280px; position:relative;">
+            <canvas id="wdpDonutChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Sağ: Saatlik Aktivite Zaman Çizelgesi Grafiği -->
+    <div class="card" style="border-radius:12px;">
+        <div class="card-header" style="padding:14px 20px; border-bottom:1px solid var(--border-color);">
+            <h3 class="card-title" style="font-size:15px; font-weight:700; margin:0;">
+                <i class="fa-solid fa-chart-column" style="color:var(--accent); margin-right:8px;"></i>Saatlik Aktivite ve Kaynak Zaman Çizelgesi
+            </h3>
+        </div>
+        <div class="card-body" style="padding:20px; height:280px; position:relative;">
+            <canvas id="wdpHourlyChart"></canvas>
+        </div>
+    </div>
+
+</div>
+
+<!-- ── DURUM DEĞİŞİKLİK VE SÜRE ÇİZELGESİ TABLOSU ────────────────────── -->
+<div class="card" style="border-radius:12px;">
+    <div class="card-header" style="padding:16px 20px; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
+        <h3 class="card-title" style="font-size:16px; font-weight:700; margin:0;">
+            <i class="fa-solid fa-clock-rotate-left" style="color:var(--accent); margin-right:8px;"></i>Çalışana Ait Durum ve Süre Çizelgesi
+        </h3>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="min-width:140px;"><i class="fa-regular fa-clock"></i> Zaman Aralığı</th>
+                        <th style="min-width:140px;"><i class="fa-solid fa-stopwatch" style="color:var(--accent);"></i> Harcanan Süre</th>
+                        <th><i class="fa-solid fa-industry"></i> İstasyon</th>
+                        <th><i class="fa-solid fa-tag"></i> Tespit Edilen Durum</th>
+                    </tr>
+                </thead>
+                <tbody id="wdp-records-tbody">
+                    <tr>
+                        <td colspan="4" style="text-align:center; padding:30px; color:var(--text-secondary);">
+                            <i class="fa-solid fa-spinner fa-spin" style="font-size:24px; margin-bottom:10px; display:block;"></i>
+                            Çalışan detaylı aktivite verileri yükleniyor...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_head %}
+<!-- Chart.js Entegrasyonu -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let wdpDonutInst = null;
+let wdpHourlyInst = null;
+
+function getUrlParams() {
+    const p = new URLSearchParams(window.location.search);
+    return {
+        worker_id: p.get('worker_id') || '',
+        worker_name: p.get('worker_name') || '',
+        istasyon: p.get('istasyon') || '',
+        start: p.get('start') || '',
+        end: p.get('end') || ''
+    };
+}
+
+function initDates() {
+    const params = getUrlParams();
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const todayStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+
+    document.getElementById('wdp-filter-start').value = params.start || todayStr;
+    document.getElementById('wdp-filter-end').value   = params.end || todayStr;
+}
+
+async function loadWorkerDetail() {
+    const params = getUrlParams();
+    const filterStart = document.getElementById('wdp-filter-start').value;
+    const filterEnd   = document.getElementById('wdp-filter-end').value;
+
+    const query = new URLSearchParams();
+    if (params.worker_id) query.set('worker_id', params.worker_id);
+    if (params.worker_name) query.set('worker_name', params.worker_name);
+    if (params.istasyon) query.set('istasyon', params.istasyon);
+    if (filterStart) query.set('start', filterStart);
+    if (filterEnd) query.set('end', filterEnd);
+
+    try {
+        const res = await fetch('/api/reports/worker_detail?' + query.toString());
+        const data = await res.json();
+
+        if (data.error) {
+            alert('Veri yüklenemedi: ' + data.error);
+            return;
+        }
+
+        // Header Bilgileri
+        document.getElementById('wdp-worker-name').textContent = data.worker_name || 'Çalışan Analizi';
+        if (document.getElementById('wdp-station')) {
+            document.getElementById('wdp-station').innerHTML = `<i class="fa-solid fa-industry" style="color:var(--accent);"></i> İstasyon: ${data.istasyon_adi || 'İstasyon-1'}`;
+        }
+        document.getElementById('wdp-sicil').innerHTML = `<i class="fa-solid fa-id-card"></i> Sicil: ${data.sicil_no || 'EMP-001'}`;
+        document.getElementById('wdp-dept').innerHTML = `<i class="fa-solid fa-building"></i> Departman: ${data.departman || 'Üretim'}`;
+
+        // 5 KPI Kartı
+        document.getElementById('wdp-kpi-active').textContent       = data.aktif_fmt || '0 dk';
+        document.getElementById('wdp-kpi-active-pct').textContent   = `%${data.aktif_pct || 0} Oran`;
+        document.getElementById('wdp-kpi-welding').textContent      = data.kaynak_fmt || '0 dk';
+        document.getElementById('wdp-kpi-welding-pct').textContent  = `%${data.kaynak_pct || 0} Oran`;
+        document.getElementById('wdp-kpi-inactive').textContent     = data.inaktif_fmt || '0 dk';
+        document.getElementById('wdp-kpi-inactive-pct').textContent = `%${data.inaktif_pct || 0} Oran`;
+        document.getElementById('wdp-kpi-phone').textContent        = data.telefon_fmt || '0 dk';
+        document.getElementById('wdp-kpi-phone-cnt').textContent    = `${data.telefon_count || 0} İhlal`;
+        document.getElementById('wdp-kpi-score').textContent        = `%${data.verimlilik_orani || 0}`;
+
+        // Donut Chart Render (Aktif, Kaynak, İnaktif, Telefon)
+        renderDonutChart(data.aktif_sec / 60.0, data.kaynak_sec / 60.0, data.inaktif_sec / 60.0, data.telefon_sec / 60.0);
+
+        // Hourly Bar Chart Render
+        renderHourlyChart(data.hourly_labels, data.hourly_aktif_min, data.hourly_kaynak_min, data.hourly_inaktif_min, data.hourly_telefon_min);
+
+        // Records Table Render (Gerçek Harcanan Süre İle)
+        const tbody = document.getElementById('wdp-records-tbody');
+        if (data.recent_records && data.recent_records.length) {
+            tbody.innerHTML = data.recent_records.map(r => {
+                const st = (r.durum || '').toUpperCase();
+                let badgeCls = 'aktif';
+                let iconHtml = '<i class="fa-solid fa-briefcase" style="margin-right:6px;"></i>';
+                
+                if (st.includes('TELEFON')) {
+                    badgeCls = 'telefon';
+                    iconHtml = '<i class="fa-solid fa-mobile-screen-button" style="margin-right:6px;"></i>';
+                } else if (st.includes('KAYNAK')) {
+                    badgeCls = 'kaynak';
+                    iconHtml = '<i class="fa-solid fa-fire-flame-curved" style="margin-right:6px;"></i>';
+                } else if (st.includes('İNAKTİF') || st.includes('INAKTIF')) {
+                    badgeCls = 'inaktif';
+                    iconHtml = '<i class="fa-solid fa-user-slash" style="margin-right:6px;"></i>';
+                }
+
+                return `
+                    <tr>
+                        <td style="font-size:13px; font-weight:600; color:var(--text-primary);"><i class="fa-regular fa-clock" style="color:var(--accent); margin-right:6px;"></i>${r.zaman_araligi}</td>
+                        <td style="font-size:14px; font-weight:700; color:var(--accent);"><i class="fa-solid fa-stopwatch" style="margin-right:6px;"></i>${r.sure_fmt}</td>
+                        <td style="font-size:13px; color:var(--text-secondary);">${r.istasyon_adi || 'İstasyon 1'}</td>
+                        <td><span class="status-badge ${badgeCls}">${iconHtml}${r.durum}</span></td>
+                    </tr>
+                `;
+            }).join('');
+        } else {
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:20px; color:var(--text-secondary);">Seçilen zaman aralığında hareket kaydı bulunamadı.</td></tr>`;
+        }
+    } catch (e) {
+        console.error('Hata:', e);
+    }
+}
+
+function renderDonutChart(aktifMin, kaynakMin, inaktifMin, telefonMin) {
+    const ctx = document.getElementById('wdpDonutChart').getContext('2d');
+    if (wdpDonutInst) wdpDonutInst.destroy();
+
+    wdpDonutInst = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Aktif Çalışma (Dk)', 'Kaynak Yapma (Dk)', 'Hareketsiz Süre (Dk)', 'Telefon Kullanımı (Dk)'],
+            datasets: [{
+                data: [aktifMin, kaynakMin, inaktifMin, telefonMin],
+                backgroundColor: ['#10B981', '#06B6D4', '#EF4444', '#F59E0B'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { boxWidth: 12, font: { family: 'Inter', size: 11 } } }
+            },
+            cutout: '65%'
+        }
+    });
+}
+
+function renderHourlyChart(labels, aktifData, kaynakData, inaktifData, telefonData) {
+    const ctx = document.getElementById('wdpHourlyChart').getContext('2d');
+    if (wdpHourlyInst) wdpHourlyInst.destroy();
+
+    wdpHourlyInst = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels || [],
+            datasets: [
+                { label: 'Aktif (Dk)', data: aktifData || [], backgroundColor: '#10B981' },
+                { label: 'Kaynak (Dk)', data: kaynakData || [], backgroundColor: '#06B6D4' },
+                { label: 'Hareketsiz (Dk)', data: inaktifData || [], backgroundColor: '#EF4444' },
+                { label: 'Telefon (Dk)', data: telefonData || [], backgroundColor: '#F59E0B' }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { stacked: true },
+                y: { stacked: true, beginAtZero: true }
+            },
+            plugins: {
+                legend: { position: 'top', labels: { boxWidth: 10, font: { family: 'Inter', size: 11 } } }
+            }
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    initDates();
+    loadWorkerDetail();
+    document.getElementById('wdp-btn-refresh').addEventListener('click', loadWorkerDetail);
+});
+</script>
+{% endblock %}

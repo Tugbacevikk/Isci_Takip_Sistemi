@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 1
+names: ['welding']
+
+roboflow:
+  workspace: tugba-cevik
+  project: fire-welding-detection-caqhk
+  version: 1
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/tugba-cevik/fire-welding-detection-caqhk/dataset/1

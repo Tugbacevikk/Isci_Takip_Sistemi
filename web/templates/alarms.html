@@ -1,0 +1,363 @@
+{% extends 'base.html' %}
+
+{% block title %}Alarmlar{% endblock %}
+{% block page_title %}Alarmlar{% endblock %}
+{% block page_title_sub %}Bildirimler & Uyarılar{% endblock %}
+
+{% block content %}
+
+<!-- ── TOP BAR ───────────────────────────────────────────────── -->
+<div class="top-action-bar">
+    <div class="top-bar-left">
+        <button class="btn btn--outline" id="btn-mark-all-read">
+            <i class="fa-solid fa-check-double"></i> Tümünü Okundu İşaretle
+        </button>
+        <button class="btn btn--outline" id="btn-refresh-alarms">
+            <i class="fa-solid fa-rotate-right"></i> Yenile
+        </button>
+        <span class="count-badge count-badge--orange" id="alarm-total-badge">
+            <i class="fa-solid fa-bell"></i>
+            {{ alarms|length if alarms else 0 }} Alarm
+        </span>
+        <span class="count-badge count-badge--red" id="alarm-unread-badge" style="display:none;">
+            <i class="fa-solid fa-circle-dot"></i>
+            <span id="unread-count-text">0</span> Okunmadı
+        </span>
+    </div>
+    <div class="top-bar-right">
+        <div class="search-wrap">
+            <i class="fa-solid fa-search search-icon"></i>
+            <input type="text" class="form-input form-input--sm" id="alarm-search"
+                   placeholder="Alarm ara..." oninput="filterAlarms(this.value)">
+        </div>
+    </div>
+</div>
+
+<!-- ── FILTER TABS ───────────────────────────────────────────── -->
+<div class="filter-tabs" id="filter-tabs">
+    <button class="filter-tab filter-tab--active" data-filter="all" onclick="setFilter('all', this)">
+        <i class="fa-solid fa-list"></i> Tümü
+        <span class="tab-count" id="tab-count-all">{{ alarms|length if alarms else 0 }}</span>
+    </button>
+    <button class="filter-tab" data-filter="telefon" onclick="setFilter('telefon', this)">
+        <i class="fa-solid fa-phone"></i> Telefon
+        <span class="tab-count" id="tab-count-telefon">0</span>
+    </button>
+    <button class="filter-tab" data-filter="inaktif" onclick="setFilter('inaktif', this)">
+        <i class="fa-solid fa-person-walking-arrow-right"></i> İnaktif
+        <span class="tab-count" id="tab-count-inaktif">0</span>
+    </button>
+    <button class="filter-tab" data-filter="today" onclick="setFilter('today', this)">
+        <i class="fa-regular fa-calendar-day"></i> Bugün
+        <span class="tab-count" id="tab-count-today">0</span>
+    </button>
+</div>
+
+<!-- ── ALARM LIST ────────────────────────────────────────────── -->
+<div class="alarm-list" id="alarm-list">
+
+    {% if alarms %}
+        {% for alarm in alarms %}
+        <div class="alarm-card {% if not alarm.read %}alarm-card--unread{% endif %}"
+             data-id="{{ alarm.id }}"
+             data-type="{{ (alarm.type or alarm.alarm_turu or '')|lower }}"
+             data-time="{{ alarm.created_at or alarm.time or '' }}"
+             data-read="{{ 'true' if alarm.read else 'false' }}">
+
+            <!-- Left: Icon Circle -->
+            <div class="alarm-icon-circle alarm-icon-circle--{{ 'red' if (alarm.type or '')|lower == 'telefon' else 'orange' }}">
+                {% if (alarm.type or '')|lower == 'telefon' %}
+                    <i class="fa-solid fa-phone"></i>
+                {% else %}
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                {% endif %}
+            </div>
+
+            <!-- Content -->
+            <div class="alarm-content">
+                <div class="alarm-header-row">
+                    <span class="alarm-type-badge alarm-type-badge--{{ 'red' if (alarm.type or '')|lower == 'telefon' else 'orange' }}">
+                        {{ alarm.type or alarm.alarm_turu or 'Alarm' }}
+                    </span>
+                    <span class="alarm-station">
+                        <i class="fa-solid fa-industry"></i>
+                        {{ alarm.station or alarm.istasyon or '—' }}
+                    </span>
+                    {% if not alarm.read %}
+                    <span class="unread-dot" title="Okunmadı"></span>
+                    {% endif %}
+                </div>
+                <p class="alarm-description">
+                    {{ alarm.description or alarm.aciklama or 'Alarm tetiklendi' }}
+                </p>
+                <div class="alarm-footer-row">
+                    <span class="alarm-time">
+                        <i class="fa-regular fa-clock"></i>
+                        {{ alarm.created_at or alarm.time or '—' }}
+                    </span>
+                    {% if alarm.worker_name %}
+                    <span class="alarm-worker">
+                        <i class="fa-solid fa-user"></i>
+                        {{ alarm.worker_name }}
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Right: Actions -->
+            <div class="alarm-actions">
+                {% if not alarm.read %}
+                <button class="btn btn--outline btn--xs" data-id="{{ alarm.id }}" onclick="markRead(this)"
+                        title="Okundu işaretle">
+                    <i class="fa-solid fa-check"></i>
+                </button>
+                {% else %}
+                <button class="btn btn--outline btn--xs" disabled title="Okundu">
+                    <i class="fa-solid fa-check-double"></i>
+                </button>
+                {% endif %}
+                <button class="btn btn--danger btn--xs" data-id="{{ alarm.id }}" onclick="deleteAlarm(this)"
+                        title="Sil">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            </div>
+
+        </div>
+        {% endfor %}
+
+    {% else %}
+        <!-- Empty State -->
+        <div class="alarm-empty" id="alarm-empty-state">
+            <div class="alarm-empty-icon">🔕</div>
+            <h3>Alarm Bulunamadı</h3>
+            <p>Şu an için herhangi bir alarm kaydı bulunmamaktadır.</p>
+            <p class="alarm-empty-sub">Sistem aktif alarmları otomatik olarak burada gösterecektir.</p>
+        </div>
+    {% endif %}
+
+</div>
+
+<!-- No filter results -->
+<div class="empty-state" id="alarm-no-results" style="display:none;">
+    <i class="fa-solid fa-bell-slash"></i>
+    <p>Bu filtre için alarm bulunamadı</p>
+</div>
+
+{% endblock %}
+
+
+{% block extra_scripts %}
+<script>
+// ═══════════════════════════════════════════════
+// Alarms JS
+// ═══════════════════════════════════════════════
+
+let activeFilter = 'all';
+let searchQuery  = '';
+
+// ── Count Tabs on Load ────────────────────────────────────────
+function countTabs() {
+    const cards   = document.querySelectorAll('.alarm-card');
+    const today   = new Date().toISOString().split('T')[0];
+    let telefon   = 0, inaktif = 0, todayCount = 0, unread = 0;
+
+    cards.forEach(card => {
+        const type = (card.dataset.type || '').toLowerCase();
+        const time = card.dataset.time || '';
+        const isRead = card.dataset.read === 'true';
+
+        if (type === 'telefon') telefon++;
+        else inaktif++;
+        if (time.startsWith(today)) todayCount++;
+        if (!isRead) unread++;
+    });
+
+    document.getElementById('tab-count-all').textContent     = cards.length;
+    document.getElementById('tab-count-telefon').textContent = telefon;
+    document.getElementById('tab-count-inaktif').textContent = inaktif;
+    document.getElementById('tab-count-today').textContent   = todayCount;
+    document.getElementById('alarm-total-badge').innerHTML   =
+        `<i class="fa-solid fa-bell"></i> ${cards.length} Alarm`;
+
+    if (unread > 0) {
+        document.getElementById('alarm-unread-badge').style.display = 'inline-flex';
+        document.getElementById('unread-count-text').textContent    = unread;
+    }
+}
+countTabs();
+
+// ── Filter Tabs ───────────────────────────────────────────────
+function setFilter(filter, el) {
+    activeFilter = filter;
+    document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('filter-tab--active'));
+    el.classList.add('filter-tab--active');
+    applyFilters();
+}
+
+function filterAlarms(query) {
+    searchQuery = query.toLowerCase().trim();
+    applyFilters();
+}
+
+function applyFilters() {
+    const cards = document.querySelectorAll('.alarm-card');
+    const today = new Date().toISOString().split('T')[0];
+    let visible = 0;
+
+    cards.forEach(card => {
+        const type  = (card.dataset.type || '').toLowerCase();
+        const time  = card.dataset.time || '';
+        const text  = card.textContent.toLowerCase();
+
+        let show = true;
+
+        // Filter tab
+        if (activeFilter === 'telefon' && type !== 'telefon') show = false;
+        if (activeFilter === 'inaktif' && type === 'telefon') show = false;
+        if (activeFilter === 'today'   && !time.startsWith(today)) show = false;
+
+        // Search
+        if (searchQuery && !text.includes(searchQuery)) show = false;
+
+        card.style.display = show ? '' : 'none';
+        if (show) visible++;
+    });
+
+    document.getElementById('alarm-no-results').style.display =
+        (visible === 0 && (activeFilter !== 'all' || searchQuery)) ? 'flex' : 'none';
+}
+
+// ── Mark Single Read ──────────────────────────────────────────
+function markRead(btn, id) {
+    if (btn && typeof btn === 'object' && btn.dataset) {
+        id = btn.dataset.id;
+    } else if (typeof btn === 'number' || typeof btn === 'string') {
+        id = btn;
+    }
+    fetch('/api/alarms/mark_read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ alarm_id: id })
+    })
+    .then(r => r.json())
+    .then(() => {
+        const card = document.querySelector(`.alarm-card[data-id="${id}"]`);
+        if (card) {
+            card.classList.remove('alarm-card--unread');
+            card.dataset.read = 'true';
+            const dot = card.querySelector('.unread-dot');
+            if (dot) dot.remove();
+        }
+        if (btn && btn.tagName) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-check-double"></i>';
+        }
+        countTabs();
+        showToast('Okundu işaretlendi', 'success');
+    })
+    .catch(() => showToast('Hata oluştu', 'error'));
+}
+
+// ── Mark All Read ─────────────────────────────────────────────
+const btnMarkAll = document.getElementById('btn-mark-all-read');
+if (btnMarkAll) {
+    btnMarkAll.addEventListener('click', function() {
+        this.disabled = true;
+        this.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> İşleniyor...';
+
+        fetch('/api/alarms/mark_read', { method: 'POST' })
+        .then(r => r.json())
+        .then(() => {
+            document.querySelectorAll('.alarm-card').forEach(card => {
+                card.classList.remove('alarm-card--unread');
+                card.dataset.read = 'true';
+                const dot = card.querySelector('.unread-dot');
+                if (dot) dot.remove();
+            });
+            const unreadB = document.getElementById('alarm-unread-badge');
+            if (unreadB) unreadB.style.display = 'none';
+            const badge = document.getElementById('alarm-count-badge');
+            if (badge) badge.style.display = 'none';
+            showToast('Tüm alarmlar okundu işaretlendi', 'success');
+            countTabs();
+        })
+        .catch(() => showToast('Hata oluştu', 'error'))
+        .finally(() => {
+            this.disabled = false;
+            this.innerHTML = '<i class="fa-solid fa-check-double"></i> Tümünü Okundu İşaretle';
+        });
+    });
+}
+
+// ── Delete Alarm ──────────────────────────────────────────────
+function deleteAlarm(id, btn) {
+    if (!confirm('Bu alarmı silmek istediğinizden emin misiniz?')) return;
+
+    fetch(`/api/alarms/delete/${id}`, { method: 'DELETE' })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success || data.status === 'ok') {
+            const card = document.querySelector(`.alarm-card[data-id="${id}"]`);
+            if (card) {
+                card.style.transition = 'opacity 0.3s, transform 0.3s';
+                card.style.opacity    = '0';
+                card.style.transform  = 'translateX(20px)';
+                setTimeout(() => { card.remove(); countTabs(); }, 300);
+            }
+            showToast('Alarm silindi', 'success');
+        } else {
+            showToast(data.message || 'Silme hatası', 'error');
+        }
+    })
+    .catch(() => showToast('Sunucu bağlantı hatası', 'error'));
+}
+
+// ── Refresh ───────────────────────────────────────────────────
+document.getElementById('btn-refresh-alarms').addEventListener('click', function() {
+    this.querySelector('i').classList.add('fa-spin');
+    setTimeout(() => location.reload(), 400);
+});
+
+// ── Real-time new alarm via Socket ─────────────────────────────
+if (window._socket) {
+    window._socket.on('new_alarm', function(data) {
+        const list  = document.getElementById('alarm-list');
+        const empty = document.getElementById('alarm-empty-state');
+        if (empty) empty.remove();
+
+        const iconClass = (data.type || '').toLowerCase() === 'telefon' ? 'fa-phone' : 'fa-triangle-exclamation';
+        const colorClass = (data.type || '').toLowerCase() === 'telefon' ? 'red' : 'orange';
+
+        const card = document.createElement('div');
+        card.className = 'alarm-card alarm-card--unread alarm-card--new';
+        card.dataset.id   = data.id || '';
+        card.dataset.type = (data.type || '').toLowerCase();
+        card.dataset.time = data.created_at || data.time || '';
+        card.dataset.read = 'false';
+        card.innerHTML = `
+            <div class="alarm-icon-circle alarm-icon-circle--${colorClass}">
+                <i class="fa-solid ${iconClass}"></i>
+            </div>
+            <div class="alarm-content">
+                <div class="alarm-header-row">
+                    <span class="alarm-type-badge alarm-type-badge--${colorClass}">${data.type || 'Alarm'}</span>
+                    <span class="alarm-station"><i class="fa-solid fa-industry"></i> ${data.station || data.istasyon || '—'}</span>
+                    <span class="unread-dot"></span>
+                </div>
+                <p class="alarm-description">${data.description || data.aciklama || 'Alarm tetiklendi'}</p>
+                <div class="alarm-footer-row">
+                    <span class="alarm-time"><i class="fa-regular fa-clock"></i> ${data.created_at || data.time || 'Şimdi'}</span>
+                </div>
+            </div>
+            <div class="alarm-actions">
+                <button class="btn btn--outline btn--xs" onclick="markRead(${data.id}, this)"><i class="fa-solid fa-check"></i></button>
+                <button class="btn btn--danger btn--xs" onclick="deleteAlarm(${data.id}, this)"><i class="fa-solid fa-trash"></i></button>
+            </div>
+        `;
+        list.insertBefore(card, list.firstChild);
+        countTabs();
+        showToast(`Yeni alarm: ${data.type || 'Alarm'} — ${data.station || ''}`, 'warning');
+    });
+}
+</script>
+{% endblock %}
